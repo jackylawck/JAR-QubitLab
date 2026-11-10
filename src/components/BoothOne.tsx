@@ -3,10 +3,12 @@ import { useState, useEffect, useRef } from 'react';
 import { Text, Html } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
 import { useQuantumStore } from '../store/quantumStore';
+import { useLocaleStore } from '../store/localeStore';
 import { sound } from '../audio/soundEngine';
 import { FONT_MATH_PATH } from '../constants';
 import { acquireAnimationLock } from '../hooks/useAnimationLock';
 
+// 🌟 優化 1：改良 useCursor，確保組件卸載時絕對重置游標
 const useCursor = () => {
   const [hovered, setHovered] = useState(false);
   useEffect(() => {
@@ -21,19 +23,16 @@ const useCursor = () => {
   };
 };
 
-const QubitCloud = ({
-  position,
-  modulus,
-  baseColor,
-  label,
-  isCollapsing,
-}: {
+// 🌟 優化 2：針對 QubitCloud 的 Props 加入嚴格型別
+interface QubitCloudProps {
   position: [number, number, number];
   modulus: number;
   baseColor: string;
   label: string;
   isCollapsing: boolean;
-}) => {
+}
+
+const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: QubitCloudProps) => {
   const isWinner = modulus > 0.9;
   const targetScale = isCollapsing && isWinner ? 1.8 : modulus > 0.1 ? modulus * 1.5 : 0.01;
   
@@ -81,9 +80,8 @@ const QubitCloud = ({
 };
 
 export const BoothOne = () => {
-  const amplitudes = useQuantumStore((state) => state.amplitudes);
-  const applyGate = useQuantumStore((state) => state.applyGate);
-  const collapse = useQuantumStore((state) => state.collapse);
+  const t = useLocaleStore((state) => state.t); // 🌟 接入 i18n
+  const { amplitudes, applyGate, collapse, resetBoothOne } = useQuantumStore();
 
   const [isCollapsing, setIsCollapsing] = useState(false);
   const collapseTimerRef = useRef<number | null>(null);
@@ -91,20 +89,18 @@ export const BoothOne = () => {
   const leverCursor = useCursor();
   const shutterCursor = useCursor();
 
-  // 元件卸載時清除計時器，避免回調觸發洩漏
+  // 🌟 初始化展台 1 狀態，並確保清理定時器
   useEffect(() => {
+    resetBoothOne();
     return () => {
-      if (collapseTimerRef.current !== null) {
-        clearTimeout(collapseTimerRef.current);
-      }
-      if (leverTimerRef.current !== null) {
-        clearTimeout(leverTimerRef.current);
-      }
+      if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
+      if (leverTimerRef.current !== null) clearTimeout(leverTimerRef.current);
     };
-  }, []);
+  }, [resetBoothOne]);
 
-  const p0 = (amplitudes[0]?.modulus ** 2 || 0) + (amplitudes[1]?.modulus ** 2 || 0);
-  const p1 = (amplitudes[2]?.modulus ** 2 || 0) + (amplitudes[3]?.modulus ** 2 || 0);
+  // NaN 防禦
+  const p0 = (amplitudes[0]?.modulus ?? 0) ** 2 + (amplitudes[1]?.modulus ?? 0) ** 2;
+  const p1 = (amplitudes[2]?.modulus ?? 0) ** 2 + (amplitudes[3]?.modulus ?? 0) ** 2;
   const leftModulus = Math.sqrt(p0);
   const rightModulus = Math.sqrt(p1);
 
@@ -113,11 +109,8 @@ export const BoothOne = () => {
     sound.playLever();
     applyGate('H', [0]);
 
-    // 啟動動畫渲染鎖，涵蓋 400ms 彈簧收斂期
     const release = acquireAnimationLock();
-    if (leverTimerRef.current !== null) {
-      clearTimeout(leverTimerRef.current);
-    }
+    if (leverTimerRef.current !== null) clearTimeout(leverTimerRef.current);
     leverTimerRef.current = window.setTimeout(() => {
       release();
       leverTimerRef.current = null;
@@ -129,13 +122,10 @@ export const BoothOne = () => {
     sound.playShutter();
     collapse();
 
-    // 啟動坍縮動畫渲染鎖
     const release = acquireAnimationLock();
     setIsCollapsing(true);
 
-    if (collapseTimerRef.current !== null) {
-      clearTimeout(collapseTimerRef.current);
-    }
+    if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
     collapseTimerRef.current = window.setTimeout(() => {
       setIsCollapsing(false);
       release();
@@ -157,14 +147,14 @@ export const BoothOne = () => {
         position={[-2, 1.5, 0]}
         modulus={leftModulus}
         baseColor="#3b82f6" 
-        label="Left"
+        label={t.common.pathA} // 🌟 i18n
         isCollapsing={isCollapsing}
       />
       <QubitCloud
         position={[2, 1.5, 0]}
         modulus={rightModulus}
         baseColor="#ef4444" 
-        label="Right" 
+        label={t.common.pathB} // 🌟 i18n
         isCollapsing={isCollapsing}
       />
 
@@ -179,7 +169,7 @@ export const BoothOne = () => {
         </mesh>
         <Html position={[0, -0.5, 0]} center style={{ pointerEvents: 'none' }}>
           <div className="bg-black/80 text-white px-3 py-1 rounded border border-white/20 select-none whitespace-nowrap text-sm">
-            🕹️ 撥動分光 (H-Gate)
+            🕹️ {t.common.splitBeam} {/* 🌟 i18n */}
           </div>
         </Html>
       </group>
@@ -195,7 +185,7 @@ export const BoothOne = () => {
         </mesh>
         <Html position={[0, 1, 0]} center style={{ pointerEvents: 'none' }}>
           <div className="bg-black/80 text-white px-3 py-1 rounded border border-white/20 select-none whitespace-nowrap text-sm">
-            📸 拍下快門 (Measure)
+            📸 {t.boothThree.measure} {/* 🌟 借用預先定義好的 i18n 詞條 */}
           </div>
         </Html>
       </group>
