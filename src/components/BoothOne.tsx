@@ -5,7 +5,7 @@ import { useSpring, a } from '@react-spring/three';
 import { useQuantumStore } from '../store/quantumStore';
 import { sound } from '../audio/soundEngine';
 import { FONT_MATH_PATH } from '../constants';
-import { acquireAnimationLock } from '../hooks/useAnimationLock'; // 引入動畫鎖機制
+import { acquireAnimationLock } from '../hooks/useAnimationLock';
 
 const useCursor = () => {
   const [hovered, setHovered] = useState(false);
@@ -36,6 +36,8 @@ const QubitCloud = ({
 }) => {
   const isWinner = modulus > 0.9;
   const targetScale = isCollapsing && isWinner ? 1.8 : modulus > 0.1 ? modulus * 1.5 : 0.01;
+  
+  // 基態 = 實心 (1.0)，疊加態 = 半透明光霧 (~0.64)
   const targetOpacity = isCollapsing && !isWinner 
     ? 0 
     : modulus > 0.95 
@@ -85,13 +87,18 @@ export const BoothOne = () => {
 
   const [isCollapsing, setIsCollapsing] = useState(false);
   const collapseTimerRef = useRef<number | null>(null);
+  const leverTimerRef = useRef<number | null>(null);
   const leverCursor = useCursor();
   const shutterCursor = useCursor();
 
+  // 元件卸載時清除計時器，避免回調觸發洩漏
   useEffect(() => {
     return () => {
       if (collapseTimerRef.current !== null) {
         clearTimeout(collapseTimerRef.current);
+      }
+      if (leverTimerRef.current !== null) {
+        clearTimeout(leverTimerRef.current);
       }
     };
   }, []);
@@ -105,26 +112,35 @@ export const BoothOne = () => {
     if (isCollapsing) return;
     sound.playLever();
     applyGate('H', [0]);
-    
-    // 短暫解鎖 frameloop 以播放過渡動畫
+
+    // 啟動動畫渲染鎖，涵蓋 400ms 彈簧收斂期
     const release = acquireAnimationLock();
-    setTimeout(release, 400); 
+    if (leverTimerRef.current !== null) {
+      clearTimeout(leverTimerRef.current);
+    }
+    leverTimerRef.current = window.setTimeout(() => {
+      release();
+      leverTimerRef.current = null;
+    }, 400);
   };
 
   const handleShutterClick = () => {
     if (isCollapsing) return;
     sound.playShutter();
     collapse();
-    
-    // 短暫解鎖 frameloop 並進入坍縮狀態
+
+    // 啟動坍縮動畫渲染鎖
     const release = acquireAnimationLock();
     setIsCollapsing(true);
-    
+
+    if (collapseTimerRef.current !== null) {
+      clearTimeout(collapseTimerRef.current);
+    }
     collapseTimerRef.current = window.setTimeout(() => {
       setIsCollapsing(false);
-      release(); // 坍縮完成後釋放渲染鎖
+      release();
       collapseTimerRef.current = null;
-    }, 300); 
+    }, 300);
   };
 
   return (
