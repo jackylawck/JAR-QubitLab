@@ -1,4 +1,3 @@
-// src/quantum/engine.ts
 import { ComplexAmplitude, GateName, RawComplex } from './types';
 
 /**
