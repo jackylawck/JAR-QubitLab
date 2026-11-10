@@ -3,6 +3,7 @@ import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { useThree, ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { useLocaleStore } from '../store/localeStore';
 
 interface PhaseDialProps {
   phase: number;
@@ -17,6 +18,7 @@ const INTERSECT_POINT = new THREE.Vector3();
 const NDC_VEC = new THREE.Vector2();
 
 export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDialProps) => {
+  const t = useLocaleStore((state) => state.t);
   const [isDragging, setIsDragging] = useState(false);
   const lastSnap = useRef<number | null>(null);
   const { camera, gl, raycaster } = useThree();
@@ -31,13 +33,13 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
     }
   }, []);
 
-  // 🌟 Latest Ref Pattern：快取最新的 onPhaseChange 引用，消除拖曳時頻繁綁定/解綁 window 事件的 GC 開銷
+  // Latest Ref Pattern：快取最新的 onPhaseChange 引用，消除拖曳時頻繁綁定/解綁 window 事件的 GC 開銷
   const onPhaseChangeRef = useRef(onPhaseChange);
   useEffect(() => {
     onPhaseChangeRef.current = onPhaseChange;
   }, [onPhaseChange]);
 
-  // 🌟 全域 Pointer 事件：即便滑鼠/手指拖出舵盤網格，在整個視窗內仍保持平滑解算
+  // 全域 Pointer 事件：即便滑鼠/手指拖出舵盤網格，在整個視窗內仍保持平滑解算
   useEffect(() => {
     if (!isDragging) return;
 
@@ -101,7 +103,7 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
       window.removeEventListener('pointerup', handleGlobalUp);
       window.removeEventListener('pointercancel', handleGlobalUp);
     };
-  }, [isDragging, gl, camera, raycaster, triggerHaptic]); // 移除 onPhaseChange 依賴
+  }, [isDragging, gl, camera, raycaster, triggerHaptic]);
 
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     if (disabled || isStandby) return;
@@ -111,10 +113,10 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
   };
 
   // 顏色隨相位在天藍 (0) 與洋紅 (π) 之間平滑漸變
-  const t = Math.abs(Math.sin(phase / 2));
+  const tRatio = Math.abs(Math.sin(phase / 2));
   const dialColor = isStandby 
     ? '#64748b' 
-    : tmpColor.lerpColors(BLUE, PINK, t).getStyle();
+    : tmpColor.lerpColors(BLUE, PINK, tRatio).getStyle();
 
   const degText = Math.round((phase * 180) / Math.PI);
 
@@ -132,7 +134,7 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
         <meshBasicMaterial color={dialColor} toneMapped={false} />
       </mesh>
 
-      {/* 動態幾何指針（直接跟隨連續 phase 角度旋轉，移除舊版 useSpring） */}
+      {/* 動態幾何指針 */}
       <group position={[0, 0.15, 0]} rotation={[0, -phase, 0]}>
         <mesh>
           <cylinderGeometry args={[0.15, 0.15, 0.15, 16]} />
@@ -154,9 +156,9 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
             ? 'bg-slate-900/80 text-slate-400 border-slate-700/50' 
             : 'bg-black/85 text-white border-white/20'
         }`}>
-          <span>🧭 連續相移 P(ϕ)</span>
+          <span>🧭 {t.common.phaseShift}</span>
           <span className="font-mono font-bold">
-            {isStandby ? '待機 (需先分光)' : `${degText}° (${phase.toFixed(2)} rad)`}
+            {isStandby ? t.common.standby : `${degText}° (${phase.toFixed(2)} rad)`}
           </span>
         </div>
       </Html>
