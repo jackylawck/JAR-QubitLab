@@ -62,7 +62,6 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
         />
       </a.mesh>
       
-      {/* 以原生 DOM 標籤取代 <Text>，徹底解除字體加載懸停 */}
       <Html position={[0, -1.8, 0]} center style={{ pointerEvents: 'none' }}>
         <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2.5 py-1 rounded-md border border-white/20 shadow-lg backdrop-blur-sm">
           {label}
@@ -172,4 +171,15 @@ export const BoothOne = () => {
           <meshStandardMaterial color="#2f3542" />
         </mesh>
         <mesh position={[0, 0.45, 0]}>
-          <cylinderGeometry args={[0.3, 0.3, 
+          <cylinderGeometry args={[0.3, 0.3, 0.1]} />
+          <meshStandardMaterial color="#eccc68" metalness={0.6} roughness={0.2} />
+        </mesh>
+        <Html position={[0, 1, 0]} center style={{ pointerEvents: 'none' }}>
+          <div className="bg-black/80 text-white px-3 py-1 rounded border border-white/20 select-none whitespace-nowrap text-xs md:text-sm shadow-md">
+            📸 拍下快門 (Measure)
+          </div>
+        </Html>
+      </group>
+    </group>
+  );
+};
