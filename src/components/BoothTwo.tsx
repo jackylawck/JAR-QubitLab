@@ -1,11 +1,10 @@
 // src/components/BoothTwo.tsx
 import { useState, useRef, useEffect } from 'react';
-import { Text, Html } from '@react-three/drei';
+import { Html } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
 import { useQuantumStore } from '../store/quantumStore';
 import { useLocaleStore } from '../store/localeStore';
 import { sound } from '../audio/soundEngine';
-import { FONT_MATH_PATH } from '../constants';
 import { acquireAnimationLock } from '../hooks/useAnimationLock';
 import { PhaseDial } from './PhaseDial';
 import { InterferenceBurst } from './InterferenceBurst';
@@ -40,7 +39,7 @@ export const BoothTwo = () => {
       if (timerRef.current !== null) clearTimeout(timerRef.current);
       lockReleaseRef.current?.();
       burstReleaseRef.current?.();
-      document.body.style.cursor = 'auto'; // 防範組件卸載時滑鼠 pointer 樣式殘留
+      document.body.style.cursor = 'auto';
     };
   }, [resetBoothTwo]);
 
@@ -141,9 +140,11 @@ export const BoothTwo = () => {
             roughness={0.2}
           />
         </a.mesh>
-        <Text position={[0, -0.4, 0.6]} fontSize={0.28} color="white" font={FONT_MATH_PATH}>
-          {t.common.pathA}
-        </Text>
+        <Html position={[0, -0.4, 0.6]} center style={{ pointerEvents: 'none' }}>
+          <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2 py-0.5 rounded border border-white/20 shadow-md">
+            {t.common.pathA}
+          </div>
+        </Html>
       </a.group>
 
       <a.group position={[2, 0, 0]}>
@@ -158,9 +159,11 @@ export const BoothTwo = () => {
             roughness={0.2}
           />
         </a.mesh>
-        <Text position={[0, -0.4, 0.6]} fontSize={0.28} color="white" font={FONT_MATH_PATH}>
-          {t.common.pathB}
-        </Text>
+        <Html position={[0, -0.4, 0.6]} center style={{ pointerEvents: 'none' }}>
+          <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2 py-0.5 rounded border border-white/20 shadow-md">
+            {t.common.pathB}
+          </div>
+        </Html>
       </a.group>
 
       {burstConfig && (
