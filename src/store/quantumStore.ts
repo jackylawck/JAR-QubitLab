@@ -1,7 +1,7 @@
 // src/store/quantumStore.ts
 import { create } from 'zustand';
 import { ComplexAmplitude, GateName } from '../quantum/types';
-import { initZeroState, applyGatePure } from '../quantum/engine';
+import { initZeroState, applyGatePure, applyPhaseGate } from '../quantum/engine';
 
 const INITIAL_QUBITS = 2;
 
@@ -27,10 +27,20 @@ export interface QuantumState {
   refIdx: number;
   isMaximallyEntangled: boolean;
   
+  // 核心通用與測量 API (Sprint 1 & Sprint 3)
   applyGate: (gate: GateName, targets: number[]) => void;
   measureOutcome: (rng?: () => number) => number;
   collapse: (rng?: () => number) => number;
   reset: () => void;
+  resetBoothOne: () => void;
+
+  // 連續相位干涉專用 API (Sprint 2 展台 2)
+  isSplit: boolean;
+  phaseAngle: number; // 弧度 [0, 2π)
+  splitBoothTwo: () => void;
+  setPhaseAngle: (angle: number) => void;
+  collideBoothTwo: () => void;
+  resetBoothTwo: () => void;
 }
 
 export const useQuantumStore = create<QuantumState>((set, get) => ({
@@ -38,6 +48,9 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
   ...initZeroState(INITIAL_QUBITS),
   isMaximallyEntangled: false,
 
+  // ==========================================
+  // Sprint 1 & 3: 通用邏輯與測量坍縮
+  // ==========================================
   applyGate: (gate, targets) => {
     const { amplitudes, refIdx, qubitCount } = get();
     
@@ -96,14 +109,82 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
     set({
       amplitudes: collapsedAmps,
       refIdx: outcomeIdx,
-      isMaximallyEntangled: false,
+      isMaximallyEntangled: false, // 坍縮後必定為可分純態，解除糾纏
     });
 
     return outcomeIdx;
   },
 
   reset: () => {
-    const qCount = get().qubitCount;
-    set({ ...initZeroState(qCount), isMaximallyEntangled: false });
+    const zero = initZeroState(get().qubitCount);
+    set({ 
+      ...zero, 
+      isMaximallyEntangled: false,
+      isSplit: false,
+      phaseAngle: 0
+    });
   },
+  resetBoothOne: () => get().reset(),
+
+  // ==========================================
+  // Sprint 2: 展台 2 專用連續干涉邏輯
+  // ==========================================
+  isSplit: false,
+  phaseAngle: 0,
+
+  splitBoothTwo: () => {
+    const { qubitCount } = get();
+    const zero = initZeroState(qubitCount);
+    // 防禦性複製輸入
+    const rawInput = zero.amplitudes.map(a => ({ re: a.re, im: a.im }));
+    const afterH = applyGatePure(rawInput, zero.refIdx, 'H', [0], qubitCount);
+    
+    set({
+      isSplit: true,
+      phaseAngle: 0,
+      amplitudes: afterH.amplitudes,
+      refIdx: afterH.refIdx,
+      isMaximallyEntangled: false, // 單量子比特 H 門不會產生糾纏
+    });
+  },
+
+  setPhaseAngle: (angle: number) => {
+    const normAngle = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    const { qubitCount, isSplit } = get();
+
+    if (!isSplit) {
+      set({ phaseAngle: normAngle });
+      return;
+    }
+
+    // 從基底態重算 H -> P(phi)，杜絕數值誤差累積
+    const zero = initZeroState(qubitCount);
+    const rawInput = zero.amplitudes.map(a => ({ re: a.re, im: a.im }));
+    const afterH = applyGatePure(rawInput, zero.refIdx, 'H', [0], qubitCount);
+    const afterP = applyPhaseGate(afterH.amplitudes, normAngle, 0, qubitCount, afterH.refIdx);
+
+    set({
+      phaseAngle: normAngle,
+      amplitudes: afterP.amplitudes,
+      refIdx: afterP.refIdx,
+      isMaximallyEntangled: false,
+    });
+  },
+
+  collideBoothTwo: () => {
+    const { amplitudes, refIdx, qubitCount, isSplit } = get();
+    if (!isSplit) return;
+
+    const rawInput = amplitudes.map((a) => ({ re: a.re, im: a.im }));
+    const finalState = applyGatePure(rawInput, refIdx, 'H', [0], qubitCount);
+    
+    set({
+      isSplit: false,
+      amplitudes: finalState.amplitudes,
+      refIdx: finalState.refIdx,
+      isMaximallyEntangled: false,
+    });
+  },
+
+  resetBoothTwo: () => get().reset(),
 }));
