@@ -7,12 +7,12 @@ interface PhaseDialProps {
   phase: number; // 弧度 [0, 2π)
   onRotatePhase: () => void;
   disabled: boolean;
-  isStandby: boolean; // 新增：是否處於未分光的待機狀態
+  isStandby: boolean;
 }
 
 export const PhaseDial = ({ phase, onRotatePhase, disabled, isStandby }: PhaseDialProps) => {
-  // 1. 安全處理指標游標，避免卸載或禁用時殘留 pointer
   const [hovered, setHovered] = useState(false);
+
   useEffect(() => {
     document.body.style.cursor = hovered && !disabled ? 'pointer' : 'auto';
     return () => {
@@ -22,20 +22,26 @@ export const PhaseDial = ({ phase, onRotatePhase, disabled, isStandby }: PhaseDi
 
   const isOppositePhase = Math.abs(phase - Math.PI) < 0.2;
 
-  // 2. 修正：命名與實際旋轉軸 (Y 軸) 保持一致。
-  // 待機時鎖定在 0，運作時才依據相位翻轉。
   const { rotationY } = useSpring({
     rotationY: isStandby || !isOppositePhase ? 0 : -Math.PI,
     config: { mass: 1, tension: 220, friction: 20 },
   });
 
-  // 3. 相位色彩隱喻：待機冷灰，0 為深天藍 (#38bdf8)，π 為洋紅/品紅 (#ec4899)
+  // J.A.R. 機械卡榫微觸覺回饋 (安全可選鏈呼叫，iOS Safari 自動靜默略過)
+  const handleClick = () => {
+    if (disabled || isStandby) return;
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate?.([15, 25, 15]); // 雙階梯機械卡榫震動
+    }
+    onRotatePhase();
+  };
+
   const dialColor = isStandby ? '#64748b' : isOppositePhase ? '#ec4899' : '#38bdf8';
 
   return (
     <group
       position={[0, 0, 1.8]}
-      onClick={disabled ? undefined : onRotatePhase}
+      onClick={handleClick}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
@@ -53,18 +59,16 @@ export const PhaseDial = ({ phase, onRotatePhase, disabled, isStandby }: PhaseDi
 
       {/* 動態旋轉的幾何指針 */}
       <a.group position={[0, 0.15, 0]} rotation-y={rotationY}>
-        {/* 指針樞軸 */}
         <mesh>
           <cylinderGeometry args={[0.15, 0.15, 0.15, 16]} />
           <meshStandardMaterial color="#f8fafc" metalness={0.9} roughness={0.1} />
         </mesh>
-        {/* 指針箭頭主體 */}
         <mesh position={[0, 0, -0.45]} rotation={[-Math.PI / 2, 0, 0]}>
           <coneGeometry args={[0.12, 0.4, 16]} />
           <meshStandardMaterial 
             color={dialColor} 
             emissive={dialColor} 
-            emissiveIntensity={isStandby ? 0 : 0.8} // 待機時熄滅發光
+            emissiveIntensity={isStandby ? 0 : 0.8}
           />
         </mesh>
       </a.group>
