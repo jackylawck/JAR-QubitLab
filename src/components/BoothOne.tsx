@@ -1,14 +1,12 @@
 // src/components/BoothOne.tsx
 import { useState, useEffect, useRef } from 'react';
-import { Text, Html } from '@react-three/drei';
+import { Html } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
 import { useQuantumStore } from '../store/quantumStore';
 import { useLocaleStore } from '../store/localeStore';
 import { sound } from '../audio/soundEngine';
-import { FONT_MATH_PATH } from '../constants';
 import { acquireAnimationLock } from '../hooks/useAnimationLock';
 
-// 🌟 優化 1：改良 useCursor，確保組件卸載時絕對重置游標
 const useCursor = () => {
   const [hovered, setHovered] = useState(false);
   useEffect(() => {
@@ -23,7 +21,6 @@ const useCursor = () => {
   };
 };
 
-// 🌟 優化 2：針對 QubitCloud 的 Props 加入嚴格型別
 interface QubitCloudProps {
   position: [number, number, number];
   modulus: number;
@@ -36,7 +33,6 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
   const isWinner = modulus > 0.9;
   const targetScale = isCollapsing && isWinner ? 1.8 : modulus > 0.1 ? modulus * 1.5 : 0.01;
   
-  // 基態 = 實心 (1.0)，疊加態 = 半透明光霧 (~0.64)
   const targetOpacity = isCollapsing && !isWinner 
     ? 0 
     : modulus > 0.95 
@@ -65,22 +61,19 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
           metalness={0.1}
         />
       </a.mesh>
-      <Text
-        position={[0, -2.2, 0]}
-        fontSize={0.3}
-        color="white"
-        anchorX="center"
-        anchorY="middle"
-        font={FONT_MATH_PATH}
-      >
-        {label}
-      </Text>
+      
+      {/* 以原生 DOM 標籤取代 <Text>，徹底解除字體加載懸停 */}
+      <Html position={[0, -1.8, 0]} center style={{ pointerEvents: 'none' }}>
+        <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2.5 py-1 rounded-md border border-white/20 shadow-lg backdrop-blur-sm">
+          {label}
+        </div>
+      </Html>
     </a.group>
   );
 };
 
 export const BoothOne = () => {
-  const t = useLocaleStore((state) => state.t); // 🌟 接入 i18n
+  const t = useLocaleStore((state) => state.t);
   const { amplitudes, applyGate, collapse, resetBoothOne } = useQuantumStore();
 
   const [isCollapsing, setIsCollapsing] = useState(false);
@@ -89,16 +82,15 @@ export const BoothOne = () => {
   const leverCursor = useCursor();
   const shutterCursor = useCursor();
 
-  // 🌟 初始化展台 1 狀態，並確保清理定時器
   useEffect(() => {
     resetBoothOne();
     return () => {
       if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
       if (leverTimerRef.current !== null) clearTimeout(leverTimerRef.current);
+      document.body.style.cursor = 'auto';
     };
   }, [resetBoothOne]);
 
-  // NaN 防禦
   const p0 = (amplitudes[0]?.modulus ?? 0) ** 2 + (amplitudes[1]?.modulus ?? 0) ** 2;
   const p1 = (amplitudes[2]?.modulus ?? 0) ** 2 + (amplitudes[3]?.modulus ?? 0) ** 2;
   const leftModulus = Math.sqrt(p0);
@@ -147,14 +139,14 @@ export const BoothOne = () => {
         position={[-2, 1.5, 0]}
         modulus={leftModulus}
         baseColor="#3b82f6" 
-        label={t.common.pathA} // 🌟 i18n
+        label={t.common.pathA}
         isCollapsing={isCollapsing}
       />
       <QubitCloud
         position={[2, 1.5, 0]}
         modulus={rightModulus}
         baseColor="#ef4444" 
-        label={t.common.pathB} // 🌟 i18n
+        label={t.common.pathB}
         isCollapsing={isCollapsing}
       />
 
@@ -168,8 +160,8 @@ export const BoothOne = () => {
           <meshStandardMaterial color="#ff4757" metalness={0.3} roughness={0.4} />
         </mesh>
         <Html position={[0, -0.5, 0]} center style={{ pointerEvents: 'none' }}>
-          <div className="bg-black/80 text-white px-3 py-1 rounded border border-white/20 select-none whitespace-nowrap text-sm">
-            🕹️ {t.common.splitBeam} {/* 🌟 i18n */}
+          <div className="bg-black/80 text-white px-3 py-1 rounded border border-white/20 select-none whitespace-nowrap text-xs md:text-sm shadow-md">
+            🕹️ {t.common.splitBeam}
           </div>
         </Html>
       </group>
@@ -180,15 +172,4 @@ export const BoothOne = () => {
           <meshStandardMaterial color="#2f3542" />
         </mesh>
         <mesh position={[0, 0.45, 0]}>
-          <cylinderGeometry args={[0.3, 0.3, 0.1]} />
-          <meshStandardMaterial color="#eccc68" metalness={0.6} roughness={0.2} />
-        </mesh>
-        <Html position={[0, 1, 0]} center style={{ pointerEvents: 'none' }}>
-          <div className="bg-black/80 text-white px-3 py-1 rounded border border-white/20 select-none whitespace-nowrap text-sm">
-            📸 {t.boothThree.measure} {/* 🌟 借用預先定義好的 i18n 詞條 */}
-          </div>
-        </Html>
-      </group>
-    </group>
-  );
-};
+          <cylinderGeometry args={[0.3, 0.3, 
