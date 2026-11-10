@@ -1,6 +1,6 @@
 // src/quantum/engine.test.ts
 import { describe, it, expect } from 'vitest';
-import { applyGatePure, initZeroState, processStateVector } from './engine';
+import { applyGatePure, initZeroState, processStateVector, applyPhaseGate } from './engine';
 import { GateName } from './types';
 
 describe('Quantum Engine Integrity & Big-Endian Verification', () => {
@@ -97,5 +97,53 @@ describe('Phase & Normalization Accuracy', () => {
 
     const totalProb = state.amplitudes.reduce((s, a) => s + a.modulus ** 2, 0);
     expect(totalProb).toBeCloseTo(1.0, 5);
+  });
+});
+
+describe('Sprint 2: Mach-Zehnder Full Sequence (H -> P(phi) -> H)', () => {
+  it('9. 完整量子態演化應滿足概率轉移與能量守恆', () => {
+    const testAngles = [
+      0,
+      Math.PI / 4,
+      Math.PI / 3,
+      Math.PI / 2,
+      (2 * Math.PI) / 3,
+      Math.PI,
+      (3 * Math.PI) / 2,
+    ];
+
+    for (const phi of testAngles) {
+      const zero = initZeroState(2);
+      const afterH = applyGatePure(zero.amplitudes, zero.refIdx, 'H', [0], 2);
+      const afterP = applyPhaseGate(afterH.amplitudes, phi, 0, 2, afterH.refIdx);
+      const finalState = applyGatePure(afterP.amplitudes, afterP.refIdx, 'H', [0], 2);
+
+      const pA = finalState.amplitudes[0].modulus ** 2;
+      const pB = finalState.amplitudes[2].modulus ** 2;
+
+      expect(pA).toBeCloseTo(Math.cos(phi / 2) ** 2, 5);
+      expect(pB).toBeCloseTo(Math.sin(phi / 2) ** 2, 5);
+      expect(pA + pB).toBeCloseTo(1.0, 5); 
+    }
+  });
+
+  it('10. phi = 0 時應完全相長干涉進入 Path A，Path B 湮滅為 0', () => {
+    const zero = initZeroState(2);
+    const afterH = applyGatePure(zero.amplitudes, zero.refIdx, 'H', [0], 2);
+    const afterP = applyPhaseGate(afterH.amplitudes, 0, 0, 2, afterH.refIdx);
+    const finalState = applyGatePure(afterP.amplitudes, afterP.refIdx, 'H', [0], 2);
+
+    expect(finalState.amplitudes[0].modulus ** 2).toBeCloseTo(1.0, 5);
+    expect(finalState.amplitudes[2].modulus ** 2).toBeCloseTo(0.0, 5);
+  });
+
+  it('11. phi = PI 時應完全轉移進入 Path B，Path A 湮滅為 0', () => {
+    const zero = initZeroState(2);
+    const afterH = applyGatePure(zero.amplitudes, zero.refIdx, 'H', [0], 2);
+    const afterP = applyPhaseGate(afterH.amplitudes, Math.PI, 0, 2, afterH.refIdx);
+    const finalState = applyGatePure(afterP.amplitudes, afterP.refIdx, 'H', [0], 2);
+
+    expect(finalState.amplitudes[0].modulus ** 2).toBeCloseTo(0.0, 5);
+    expect(finalState.amplitudes[2].modulus ** 2).toBeCloseTo(1.0, 5);
   });
 });
