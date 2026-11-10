@@ -86,6 +86,13 @@ function executeUnitaryMatrix(
         nextState[i1] = temp;
       }
     }
+  } else if (gate === 'Z') {
+    // Z = diag(1, -1)：目標位元為 1 的振幅乘以 -1（相位翻轉 π）
+    for (let i = 0; i < size; i++) {
+      if ((i & bitMask) !== 0) {
+        nextState[i] = { re: -state[i].re, im: -state[i].im };
+      }
+    }
   } else if (gate === 'CNOT' && targets.length === 2) {
     const ctrl = targets[0];
     const tgt = targets[1];
@@ -93,7 +100,6 @@ function executeUnitaryMatrix(
     const tgtMask = 1 << (qubitCount - 1 - tgt);
 
     for (let i = 0; i < size; i++) {
-      // 僅當控制位元為 1 時，且我們處於目標位元為 0 的那一對
       if ((i & ctrlMask) !== 0 && (i & tgtMask) === 0) {
         const i1 = i | tgtMask;
         const temp = nextState[i];
