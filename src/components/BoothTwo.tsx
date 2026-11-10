@@ -12,106 +12,121 @@ import { InterferenceBurst } from './InterferenceBurst';
 export const BoothTwo = () => {
   const amplitudes = useQuantumStore((state) => state.amplitudes);
   const applyGate = useQuantumStore((state) => state.applyGate);
+  const reset = useQuantumStore((state) => state.reset);
 
-  // 狀態管理
-  const [isInterfering, setIsInterfering] = useState(false);
-  const [burstType, setBurstType] = useState<'evaporate' | 'merge' | null>(null);
+  // 實驗光路狀態機：未分光 (false) -> 已分光 (true)
+  const [isSplit, setIsSplit] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
 
-  // 動畫鎖與計時器參照 (對稱防禦架構)
-  const dialTimerRef = useRef<number | null>(null);
-  const mergeTimerRef = useRef<number | null>(null);
-  
-  const dialReleaseRef = useRef<(() => void) | null>(null);
-  const mergeReleaseRef = useRef<(() => void) | null>(null);
-  const burstReleaseRef = useRef<(() => void) | null>(null); // 專門接管粒子系統的渲染鎖
+  // 粒子特效狀態
+  const [burstConfig, setBurstConfig] = useState<{
+    type: 'evaporate' | 'merge';
+    position: [number, number, number];
+  } | null>(null);
 
-  // 卸載時安全釋放所有未完成的鎖與計時器
+  // 動畫鎖與計時器管理
+  const timerRef = useRef<number | null>(null);
+  const lockReleaseRef = useRef<(() => void) | null>(null);
+  const burstReleaseRef = useRef<(() => void) | null>(null);
+
+  // 進入展台時強制重置為乾淨的 |00⟩ 基態
   useEffect(() => {
+    reset();
+    setIsSplit(false);
+
     return () => {
-      if (dialTimerRef.current !== null) clearTimeout(dialTimerRef.current);
-      if (mergeTimerRef.current !== null) clearTimeout(mergeTimerRef.current);
-      dialReleaseRef.current?.();
-      mergeReleaseRef.current?.();
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+      lockReleaseRef.current?.();
       burstReleaseRef.current?.();
     };
-  }, []);
+  }, [reset]);
 
-  // 取得 q0 處於 |0⟩ 與 |1⟩ 的振幅參數 (Big-Endian: amplitudes[0] = |00⟩, amplitudes[2] = |10⟩)
+  // q0 的物理振幅 (Big-Endian: amplitudes[0] = |00⟩, amplitudes[2] = |10⟩)
   const amp0 = amplitudes[0] || { modulus: 0, phase: 0 };
   const amp1 = amplitudes[2] || { modulus: 0, phase: 0 };
 
-  // 物理柱高平滑動態
+  // 兩柱高度與不透明度彈簧
   const { h0, h1, opacity0, opacity1 } = useSpring({
     h0: amp0.modulus * 2.5,
     h1: amp1.modulus * 2.5,
-    opacity0: amp0.modulus > 0.05 ? 0.85 : 0.05,
-    opacity1: amp1.modulus > 0.05 ? 0.85 : 0.05,
+    opacity0: amp0.modulus > 0.05 ? (amp0.modulus > 0.9 ? 1.0 : 0.8) : 0.05,
+    opacity1: amp1.modulus > 0.05 ? (amp1.modulus > 0.9 ? 1.0 : 0.8) : 0.05,
     config: { mass: 1, tension: 200, friction: 22 },
   });
 
-  // 撥動相位舵盤：對 q0 施加 Z 門 (使 |1⟩ 分支產生 π 相位翻轉)
-  const handleRotatePhase = () => {
-    if (isInterfering) return;
-    sound.playLever();
-    applyGate('Z', [0]);
-
-    dialReleaseRef.current?.();
-    if (dialTimerRef.current !== null) clearTimeout(dialTimerRef.current);
+  // 工具：安全獲取渲染鎖
+  const triggerAnimation = (duration: number) => {
+    lockReleaseRef.current?.();
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
 
     const release = acquireAnimationLock();
-    dialReleaseRef.current = release;
-    dialTimerRef.current = window.setTimeout(() => {
+    lockReleaseRef.current = release;
+    setIsBusy(true);
+
+    timerRef.current = window.setTimeout(() => {
+      setIsBusy(false);
       release();
-      dialReleaseRef.current = null;
-      dialTimerRef.current = null;
-    }, 450);
+      lockReleaseRef.current = null;
+      timerRef.current = null;
+    }, duration);
   };
 
-  // 觸發干涉匯流對撞 (施加第二道 H 門)
+  // Step 1: 第一道分光 (H 門)
+  const handleSplit = () => {
+    if (isBusy || isSplit) return;
+    sound.playLever();
+    applyGate('H', [0]); // |00⟩ -> (|00⟩ + |10⟩)/√2
+    setIsSplit(true);
+    triggerAnimation(450);
+  };
+
+  // Step 2: 相位翻轉 (Z 門)
+  const handleRotatePhase = () => {
+    if (isBusy || !isSplit) return;
+    sound.playLever();
+    applyGate('Z', [0]); // (|00⟩ + |10⟩)/√2 -> (|00⟩ - |10⟩)/√2
+    triggerAnimation(400);
+  };
+
+  // Step 3: 匯流對撞 (第二道 H 門，產生干涉搬運)
   const handleCollide = () => {
-    if (isInterfering) return;
-    setIsInterfering(true);
+    if (isBusy || !isSplit) return;
 
-    // 1. 釋放並重新獲取柱高形變與整體操作的動畫鎖
-    mergeReleaseRef.current?.();
-    if (mergeTimerRef.current !== null) clearTimeout(mergeTimerRef.current);
-    const mergeRelease = acquireAnimationLock();
-    mergeReleaseRef.current = mergeRelease;
+    // 判斷當前相對相位
+    const isAntiPhase = Math.abs(amp1.phase - Math.PI) < 0.2;
 
-    // 2. 判斷相長或相消干涉
-    const phaseDiff = Math.abs(amp0.phase - amp1.phase);
-    const isAntiPhase = Math.abs(phaseDiff - Math.PI) < 0.2;
-
-    // 3. 接管粒子系統的動畫鎖，確保 frameloop="always" 貫穿粒子飛行週期
+    // 接管粒子系統的渲染鎖
     burstReleaseRef.current?.();
     burstReleaseRef.current = acquireAnimationLock();
 
     if (isAntiPhase) {
+      // 反相 (π)：左側 Path A 相消蒸發歸零，能量完全匯入右側 Path B (1.0)
       sound.playEvaporate();
-      setBurstType('evaporate');
+      setBurstConfig({
+        type: 'evaporate',
+        position: [-2, 0.8, 0], // 粒子在相消的左柱 (Path A) 蒸發散逸
+      });
     } else {
+      // 同相 (0)：右側 Path B 相消蒸發歸零，能量完全匯入左側 Path A (1.0)
       sound.playMerge();
-      setBurstType('merge');
+      setBurstConfig({
+        type: 'evaporate',
+        position: [2, 0.8, 0], // 粒子在相消的右柱 (Path B) 蒸發散逸
+      });
     }
 
-    // 執行第二道 H 門，波函數疊加干涉
-    applyGate('H', [0]);
-
-    // 4. 形變彈簧恢復定時器 (600ms)
-    mergeTimerRef.current = window.setTimeout(() => {
-      setIsInterfering(false);
-      mergeRelease();
-      mergeReleaseRef.current = null;
-      mergeTimerRef.current = null;
-    }, 600);
+    applyGate('H', [0]); // 執行波動疊加演化
+    setIsSplit(false);   // 匯流完成，結束本次干涉循環
+    triggerAnimation(600);
   };
 
-  // 粒子生命週期結束回調：釋放粒子動畫鎖
   const handleBurstComplete = () => {
-    setBurstType(null);
+    setBurstConfig(null);
     burstReleaseRef.current?.();
     burstReleaseRef.current = null;
   };
+
+  const isOppositePhase = Math.abs(amp1.phase - Math.PI) < 0.2;
 
   return (
     <group>
@@ -124,7 +139,7 @@ export const BoothTwo = () => {
         <meshStandardMaterial color="#111118" roughness={0.8} />
       </mesh>
 
-      {/* 匯流金屬軌道 */}
+      {/* 匯流光導金屬軌道 */}
       <mesh position={[0, -0.15, 0]}>
         <boxGeometry args={[5, 0.08, 0.4]} />
         <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
@@ -153,8 +168,8 @@ export const BoothTwo = () => {
         <a.mesh position-y={h1.to((h) => h / 2)}>
           <cylinderGeometry args={[0.45, 0.45, 1, 32]} />
           <a.meshStandardMaterial
-            color={Math.abs(amp1.phase - Math.PI) < 0.2 ? '#ec4899' : '#38bdf8'}
-            emissive={Math.abs(amp1.phase - Math.PI) < 0.2 ? '#ec4899' : '#38bdf8'}
+            color={isSplit && isOppositePhase ? '#ec4899' : '#38bdf8'}
+            emissive={isSplit && isOppositePhase ? '#ec4899' : '#38bdf8'}
             emissiveIntensity={0.6}
             transparent
             opacity={opacity1}
@@ -166,48 +181,89 @@ export const BoothTwo = () => {
         </Text>
       </a.group>
 
-      {/* 粒子爆發特效：掛載於右柱對撞點 */}
-      <InterferenceBurst
-        type={burstType}
-        position={[burstType === 'evaporate' ? 2 : -2, 0.8, 0]}
-        onComplete={handleBurstComplete}
-      />
+      {/* 蒸發粒子系統：精確定位在被相消清零的柱體位置 */}
+      {burstConfig && (
+        <InterferenceBurst
+          type={burstConfig.type}
+          position={burstConfig.position}
+          onComplete={handleBurstComplete}
+        />
+      )}
 
-      {/* 相位舵盤 */}
-      <PhaseDial
-        phase={amp1.phase}
-        onRotatePhase={handleRotatePhase}
-        disabled={isInterfering}
-      />
-
-      {/* 干涉匯流按鈕 */}
+      {/* 1. 分光桿 (Step 1: H-Gate) */}
       <group
-        position={[0, 0.1, -1.2]}
-        onClick={handleCollide}
+        position={[-3.2, 0.1, 1.2]}
+        onClick={handleSplit}
         onPointerOver={() => {
-          if (!isInterfering) document.body.style.cursor = 'pointer';
+          if (!isBusy && !isSplit) document.body.style.cursor = 'pointer';
         }}
         onPointerOut={() => {
           document.body.style.cursor = 'auto';
         }}
       >
         <mesh position={[0, 0.2, 0]}>
-          <cylinderGeometry args={[0.6, 0.7, 0.3, 32]} />
+          <cylinderGeometry args={[0.25, 0.3, 0.3, 16]} />
+          <meshStandardMaterial color="#1e293b" />
+        </mesh>
+        <mesh position={[0, 0.45, 0]}>
+          <sphereGeometry args={[0.22, 16, 16]} />
+          <meshStandardMaterial 
+            color={!isSplit ? '#38bdf8' : '#64748b'} 
+            emissive={!isSplit ? '#38bdf8' : '#000'}
+            emissiveIntensity={0.5} 
+          />
+        </mesh>
+        <Html position={[0, -0.4, 0]} center style={{ pointerEvents: 'none' }}>
+          <div className={`px-2.5 py-1 rounded text-xs select-none whitespace-nowrap shadow-md border ${
+            !isSplit 
+              ? 'bg-blue-950/80 text-blue-200 border-blue-500/40 animate-pulse' 
+              : 'bg-black/50 text-gray-500 border-gray-700/30'
+          }`}>
+            ① 撥動分光 (H)
+          </div>
+        </Html>
+      </group>
+
+      {/* 2. 相位舵盤 (Step 2: Z-Gate) */}
+      <PhaseDial
+        phase={amp1.phase}
+        onRotatePhase={handleRotatePhase}
+        disabled={isBusy || !isSplit}
+        isStandby={!isSplit}
+      />
+
+      {/* 3. 匯流對撞按鈕 (Step 3: 2nd H-Gate) */}
+      <group
+        position={[3.2, 0.1, 1.2]}
+        onClick={handleCollide}
+        onPointerOver={() => {
+          if (!isBusy && isSplit) document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = 'auto';
+        }}
+      >
+        <mesh position={[0, 0.2, 0]}>
+          <cylinderGeometry args={[0.35, 0.45, 0.3, 32]} />
           <meshStandardMaterial color="#1e293b" metalness={0.6} roughness={0.3} />
         </mesh>
         <mesh position={[0, 0.38, 0]}>
-          <cylinderGeometry args={[0.45, 0.45, 0.1, 32]} />
+          <cylinderGeometry args={[0.28, 0.28, 0.1, 32]} />
           <meshStandardMaterial
-            color="#f59e0b"
+            color={isSplit ? '#f59e0b' : '#64748b'}
             metalness={0.5}
             roughness={0.2}
-            emissive="#f59e0b"
-            emissiveIntensity={0.4}
+            emissive={isSplit ? '#f59e0b' : '#000'}
+            emissiveIntensity={isSplit ? 0.6 : 0}
           />
         </mesh>
-        <Html position={[0, 0.9, 0]} center style={{ pointerEvents: 'none' }}>
-          <div className="bg-amber-950/80 text-amber-200 border border-amber-500/40 px-3 py-1 rounded select-none whitespace-nowrap text-xs font-bold shadow-lg">
-            ⚡ 匯流對撞 (Interfere / 2nd H-Gate)
+        <Html position={[0, -0.4, 0]} center style={{ pointerEvents: 'none' }}>
+          <div className={`px-2.5 py-1 rounded text-xs select-none whitespace-nowrap shadow-md border ${
+            isSplit 
+              ? 'bg-amber-950/80 text-amber-200 border-amber-500/40 font-bold animate-pulse' 
+              : 'bg-black/50 text-gray-500 border-gray-700/30'
+          }`}>
+            ③ 匯流對撞 (Interfere)
           </div>
         </Html>
       </group>
