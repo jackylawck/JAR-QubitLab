@@ -1,3 +1,4 @@
+// src/quantum/engine.ts
 import { ComplexAmplitude, GateName, RawComplex } from './types';
 
 /**
@@ -8,21 +9,24 @@ import { ComplexAmplitude, GateName, RawComplex } from './types';
  */
 
 export function initZeroState(qubitCount: number): { amplitudes: ComplexAmplitude[]; refIdx: number } {
-  const size = Math.pow(2, qubitCount);
-  const raw = Array.from({ length: size }, (_, i) => ({ re: i === 0 ? 1 : 0, im: 0 }));
+  const size = 1 << qubitCount; // 使用位元左移替代 Math.pow 更高效
+  const raw = new Array(size);
+  for (let i = 0; i < size; i++) {
+    raw[i] = { re: i === 0 ? 1 : 0, im: 0 };
+  }
   return processStateVector(raw, 0);
 }
 
 export function processStateVector(
-  amplitudes: RawComplex[],
+  amplitudes: ReadonlyArray<RawComplex>, // 支援傳入 ComplexAmplitude[]
   prevRefIdx: number = 0
 ): { amplitudes: ComplexAmplitude[]; refIdx: number } {
-  const modSq = (a: RawComplex) => a.re ** 2 + a.im ** 2;
-
   let bestIdx = 0;
   let bestModSq = -1;
-  for (let i = 0; i < amplitudes.length; i++) {
-    const m = modSq(amplitudes[i]);
+  const size = amplitudes.length;
+
+  for (let i = 0; i < size; i++) {
+    const m = amplitudes[i].re ** 2 + amplitudes[i].im ** 2;
     if (m > bestModSq + 1e-9) {
       bestModSq = m;
       bestIdx = i;
@@ -30,65 +34,84 @@ export function processStateVector(
   }
 
   // 1.5x 遲滯鎖相演算法：防止逐步演化時全域相位閃爍
-  const prevModSq = modSq(amplitudes[prevRefIdx] ?? { re: 0, im: 0 });
+  const prevAmp = amplitudes[prevRefIdx] ?? { re: 0, im: 0 };
+  const prevModSq = prevAmp.re ** 2 + prevAmp.im ** 2;
   const shouldSwitch = prevModSq < 1e-6 || bestModSq > prevModSq * 1.5;
   const refIdx = shouldSwitch ? bestIdx : prevRefIdx;
 
   // 計算基準相位的逆旋轉角
-  const refPhase = Math.atan2(amplitudes[refIdx].im, amplitudes[refIdx].re);
+  const refAmp = amplitudes[refIdx] ?? { re: 1, im: 0 };
+  const refPhase = Math.atan2(refAmp.im, refAmp.re);
   const cos = Math.cos(-refPhase);
   const sin = Math.sin(-refPhase);
 
-  const processed = amplitudes.map((a) => {
+  // 🌟 優化：使用定長陣列取代 .map()，效能更佳
+  const processed: ComplexAmplitude[] = new Array(size);
+  for (let i = 0; i < size; i++) {
+    const a = amplitudes[i];
     const normRe = a.re * cos - a.im * sin;
     const normIm = a.re * sin + a.im * cos;
     const mod = Math.sqrt(normRe ** 2 + normIm ** 2);
     let p = Math.atan2(normIm, normRe);
     if (p < 0) p += 2 * Math.PI;
 
-    return { re: normRe, im: normIm, modulus: mod, phase: p };
-  });
+    processed[i] = { re: normRe, im: normIm, modulus: mod, phase: p };
+  }
 
   return { amplitudes: processed, refIdx };
 }
 
 function executeUnitaryMatrix(
-  state: RawComplex[],
+  state: ReadonlyArray<RawComplex>,
   gate: GateName,
   targets: number[],
   qubitCount: number
 ): RawComplex[] {
   const size = state.length;
-  const nextState = state.map((s) => ({ re: s.re, im: s.im }));
+  const nextState: RawComplex[] = new Array(size);
+
+  // 🌟 優化 1：統一在最外層進行一次防禦性拷貝 (Store 不需再手動 map)
+  for (let i = 0; i < size; i++) {
+    nextState[i] = { re: state[i].re, im: state[i].im };
+  }
 
   const q = targets[0];
-  const bitMask = 1 << (qubitCount - 1 - q); // Big-Endian 位遮罩
+  const bitMask = 1 << (qubitCount - 1 - q);
 
+  // 🌟 優化 2：Zero-GC 內圈運算。直接原地修改 nextState[i].re / im，杜絕物件分配
   if (gate === 'H') {
     const invSqrt2 = 1 / Math.SQRT2;
     for (let i = 0; i < size; i++) {
       if ((i & bitMask) === 0) {
         const i1 = i | bitMask;
-        const a0 = state[i];
-        const a1 = state[i1];
-        nextState[i] = { re: (a0.re + a1.re) * invSqrt2, im: (a0.im + a1.im) * invSqrt2 };
-        nextState[i1] = { re: (a0.re - a1.re) * invSqrt2, im: (a0.im - a1.im) * invSqrt2 };
+        const a0Re = nextState[i].re;
+        const a0Im = nextState[i].im;
+        const a1Re = nextState[i1].re;
+        const a1Im = nextState[i1].im;
+
+        nextState[i].re = (a0Re + a1Re) * invSqrt2;
+        nextState[i].im = (a0Im + a1Im) * invSqrt2;
+        nextState[i1].re = (a0Re - a1Re) * invSqrt2;
+        nextState[i1].im = (a0Im - a1Im) * invSqrt2;
       }
     }
   } else if (gate === 'X') {
     for (let i = 0; i < size; i++) {
       if ((i & bitMask) === 0) {
         const i1 = i | bitMask;
-        const temp = nextState[i];
-        nextState[i] = nextState[i1];
-        nextState[i1] = temp;
+        const tmpRe = nextState[i].re;
+        const tmpIm = nextState[i].im;
+        nextState[i].re = nextState[i1].re;
+        nextState[i].im = nextState[i1].im;
+        nextState[i1].re = tmpRe;
+        nextState[i1].im = tmpIm;
       }
     }
   } else if (gate === 'Z') {
-    // Z = diag(1, -1)：目標位元為 1 的振幅乘以 -1（相位翻轉 π）
     for (let i = 0; i < size; i++) {
       if ((i & bitMask) !== 0) {
-        nextState[i] = { re: -nextState[i].re, im: -nextState[i].im };
+        nextState[i].re = -nextState[i].re;
+        nextState[i].im = -nextState[i].im;
       }
     }
   } else if (gate === 'CNOT') {
@@ -105,9 +128,12 @@ function executeUnitaryMatrix(
       for (let i = 0; i < size; i++) {
         if ((i & ctrlMask) !== 0 && (i & tgtMask) === 0) {
           const i1 = i | tgtMask;
-          const temp = nextState[i];
-          nextState[i] = nextState[i1];
-          nextState[i1] = temp;
+          const tmpRe = nextState[i].re;
+          const tmpIm = nextState[i].im;
+          nextState[i].re = nextState[i1].re;
+          nextState[i].im = nextState[i1].im;
+          nextState[i1].re = tmpRe;
+          nextState[i1].im = tmpIm;
         }
       }
     }
@@ -117,7 +143,7 @@ function executeUnitaryMatrix(
 }
 
 export function applyGatePure(
-  state: RawComplex[],
+  state: ReadonlyArray<RawComplex>, // 支援直接傳入 Store 的 amplitudes
   prevRefIdx: number,
   gate: GateName,
   targets: number[],
@@ -125,4 +151,35 @@ export function applyGatePure(
 ): { amplitudes: ComplexAmplitude[]; refIdx: number } {
   const evolvedRaw = executeUnitaryMatrix(state, gate, targets, qubitCount);
   return processStateVector(evolvedRaw, prevRefIdx);
+}
+
+// 🌟 尋回 Sprint 2 核心：連續相位干涉門 P(phi)
+export function applyPhaseGate(
+  state: ReadonlyArray<RawComplex>,
+  phi: number,
+  target: number,
+  qubitCount: number,
+  prevRefIdx: number = 0
+): { amplitudes: ComplexAmplitude[]; refIdx: number } {
+  const size = state.length;
+  const bitMask = 1 << (qubitCount - 1 - target);
+  const cosPhi = Math.cos(phi);
+  const sinPhi = Math.sin(phi);
+
+  const nextRaw: RawComplex[] = new Array(size);
+  for (let i = 0; i < size; i++) {
+    // 零 GC 內部直接拷貝與計算
+    if ((i & bitMask) === 0) {
+      nextRaw[i] = { re: state[i].re, im: state[i].im };
+    } else {
+      const re = state[i].re;
+      const im = state[i].im;
+      nextRaw[i] = {
+        re: re * cosPhi - im * sinPhi,
+        im: re * sinPhi + im * cosPhi,
+      };
+    }
+  }
+
+  return processStateVector(nextRaw, prevRefIdx);
 }
