@@ -62,8 +62,6 @@ function executeUnitaryMatrix(
   const size = state.length;
   const nextState = state.map((s) => ({ re: s.re, im: s.im }));
 
-  if (gate === 'PHASE_NOOP') {
-    return nextState;
   }
 
   const q = targets[0];
