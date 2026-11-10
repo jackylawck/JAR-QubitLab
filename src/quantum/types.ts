@@ -1,5 +1,5 @@
 // src/quantum/types.ts
-export type GateName = 'H' | 'X' | 'Z' | 'CNOT' | 'PHASE_NOOP';
+export type GateName = 'H' | 'X' | 'Z' | 'CNOT';
 
 export interface RawComplex {
   re: number;
