@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Text, Html } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
 import { useQuantumStore } from '../store/quantumStore';
+import { useLocaleStore } from '../store/localeStore';
 import { sound } from '../audio/soundEngine';
 import { FONT_MATH_PATH } from '../constants';
 import { acquireAnimationLock } from '../hooks/useAnimationLock';
@@ -10,6 +11,8 @@ import { PhaseDial } from './PhaseDial';
 import { InterferenceBurst } from './InterferenceBurst';
 
 export const BoothTwo = () => {
+  const t = useLocaleStore((state) => state.t);
+
   const {
     amplitudes,
     isSplit,
@@ -37,6 +40,7 @@ export const BoothTwo = () => {
       if (timerRef.current !== null) clearTimeout(timerRef.current);
       lockReleaseRef.current?.();
       burstReleaseRef.current?.();
+      document.body.style.cursor = 'auto'; // 防範組件卸載時滑鼠 pointer 樣式殘留
     };
   }, [resetBoothTwo]);
 
@@ -138,7 +142,7 @@ export const BoothTwo = () => {
           />
         </a.mesh>
         <Text position={[0, -0.4, 0.6]} fontSize={0.28} color="white" font={FONT_MATH_PATH}>
-          Path A (|0⟩)
+          {t.common.pathA}
         </Text>
       </a.group>
 
@@ -155,7 +159,7 @@ export const BoothTwo = () => {
           />
         </a.mesh>
         <Text position={[0, -0.4, 0.6]} fontSize={0.28} color="white" font={FONT_MATH_PATH}>
-          Path B (|1⟩)
+          {t.common.pathB}
         </Text>
       </a.group>
 
@@ -195,7 +199,7 @@ export const BoothTwo = () => {
               ? 'bg-blue-950/80 text-blue-200 border-blue-500/40 animate-pulse' 
               : 'bg-black/50 text-gray-500 border-gray-700/30'
           }`}>
-            ① 撥動分光 (H)
+            {t.common.splitBeam}
           </div>
         </Html>
       </group>
@@ -237,7 +241,7 @@ export const BoothTwo = () => {
               ? 'bg-amber-950/80 text-amber-200 border-amber-500/40 font-bold animate-pulse' 
               : 'bg-black/50 text-gray-500 border-gray-700/30'
           }`}>
-            ③ 匯流對撞 (Interfere)
+            {t.common.interfere}
           </div>
         </Html>
       </group>
