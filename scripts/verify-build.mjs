@@ -13,13 +13,16 @@ if (!existsSync(htmlPath)) {
 }
 const html = readFileSync(htmlPath, 'utf8');
 
-// 1. CSP 存在性 + 內容
-const cspMatch = html.match(/<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*content=["']([^"']*)["']/i);
+// 1. CSP 存在性 + 內容 (使用反向引用 \1 鎖定最外層閉合引號，不被內部單引號截斷)
+const cspMatch =
+  html.match(/<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*content=(["'])([\s\S]*?)\1/i) ||
+  html.match(/<meta[^>]*content=(["'])([\s\S]*?)\1[^>]*http-equiv=["']Content-Security-Policy["']/i);
+
 if (!cspMatch) {
   console.error('❌ CSP meta tag is missing.');
   process.exit(1);
 }
-const csp = cspMatch[1];
+const csp = cspMatch[2];
 for (const d of ["default-src 'self'", "script-src 'self'", "object-src 'none'"]) {
   if (!csp.includes(d)) {
     console.error(`❌ CSP missing directive: ${d}`);
