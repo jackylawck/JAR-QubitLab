@@ -109,7 +109,7 @@ export default function App() {
       {/* 頂部標題 */}
       <div className="absolute top-6 left-6 z-10 pointer-events-none">
         <h1 className="text-3xl font-black tracking-tighter text-white drop-shadow-md">
-          QubitLab <span className="text-blue-400">|</span> 量子微觀實驗室
+          J.A.R. QubitLab <span className="text-blue-400">|</span> 量子微觀實驗室
         </h1>
         <p className="text-gray-400 mt-1 text-sm">滑鼠拖曳旋轉視角 / 點擊下方裝置互動</p>
       </div>

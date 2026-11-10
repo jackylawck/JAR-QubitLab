@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const isCI = process.env.GITHUB_ACTIONS === 'true';
-const REPO_NAME = 'QubitLab'; // ⚠️ 與 vite.config.ts 的 base 保持一致
+const REPO_NAME = 'JAR-QubitLab'; // ⚠️ 與 vite.config.ts 的 base 保持一致
 const basePrefix = isCI ? `/${REPO_NAME}/` : '/';
 
 const htmlPath = resolve('dist/index.html');
