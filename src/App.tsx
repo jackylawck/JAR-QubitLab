@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { BoothOne } from './components/BoothOne';
@@ -14,46 +14,56 @@ export default function App() {
   return (
     <div className="w-full h-screen bg-gray-950 text-gray-100 font-sans overflow-hidden relative">
       <Canvas 
-        // 稍微拉遠相機並加大 FOV，確保手機版按鈕不會被裁掉
         camera={{ position: [0, 6, 11], fov: 50 }}
         dpr={[1, 2]}
-        frameloop={isAnimating ? 'always' : 'demand'}
+        // 確保首幀與待機微觀動態即時流暢，動畫鎖定時持續高幀率
+        frameloop={isAnimating ? 'always' : 'always'}
         className="absolute inset-0 z-0"
       >
         <color attach="background" args={['#0a0a0f']} />
+
+        {/* 基礎全域光照：環境光 + 主定向光 + 補光，防止模型死黑 */}
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
+        <pointLight position={[-5, 5, -5]} intensity={0.6} />
+
         <OrbitControls 
           enablePan={false} 
           minPolarAngle={Math.PI / 4} 
           maxPolarAngle={Math.PI / 2.2} 
           minDistance={4} 
-          maxDistance={12} 
+          maxDistance={14} 
           target={[0, 0.5, 0]}
         />
-        {/* 依據狀態渲染對應展台 */}
-        {activeBooth === 'one' ? <BoothOne /> : <BoothTwo />}
+
+        {/* 必須使用 Suspense 包裹所有使用非同步字體 (NotoSansMath) 的 3D 組件 */}
+        <Suspense fallback={null}>
+          {activeBooth === 'one' ? <BoothOne /> : <BoothTwo />}
+        </Suspense>
       </Canvas>
 
       {/* 頂部展台切換按鈕 */}
       <div className="absolute top-6 right-6 z-20 flex gap-2">
         <button 
           onClick={() => setActiveBooth('one')} 
-          className={`px-4 py-2 rounded-md font-bold transition-colors ${
-            activeBooth === 'one' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+          className={`px-4 py-2 rounded-md font-bold transition-colors cursor-pointer ${
+            activeBooth === 'one' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
           }`}
         >
           展台 1
         </button>
         <button 
           onClick={() => setActiveBooth('two')} 
-          className={`px-4 py-2 rounded-md font-bold transition-colors ${
-            activeBooth === 'two' ? 'bg-cyan-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+          className={`px-4 py-2 rounded-md font-bold transition-colors cursor-pointer ${
+            activeBooth === 'two' ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-500/30' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
           }`}
         >
           展台 2
         </button>
       </div>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md border border-white/10 p-6 rounded-xl w-11/12 max-w-3xl z-10 pointer-events-none shadow-2xl">
+      {/* 下方科學館說明展牌 */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/75 backdrop-blur-md border border-white/10 p-6 rounded-xl w-11/12 max-w-3xl z-10 pointer-events-none shadow-2xl">
         {activeBooth === 'one' ? (
           <>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -96,6 +106,7 @@ export default function App() {
         )}
       </div>
       
+      {/* 頂部標題 */}
       <div className="absolute top-6 left-6 z-10 pointer-events-none">
         <h1 className="text-3xl font-black tracking-tighter text-white drop-shadow-md">
           QubitLab <span className="text-blue-400">|</span> 量子微觀實驗室
