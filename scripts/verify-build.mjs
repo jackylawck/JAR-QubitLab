@@ -28,19 +28,30 @@ if (!cspMatch) {
 }
 
 const csp = cspMatch[2];
-// 🌟 優化 1：擴增 Web Worker 與安全網的指令檢查
-const requiredDirectives = [
+
+// 基本指令字串檢查
+const basicDirectives = [
   "default-src 'self'",
   "script-src 'self'",
   "object-src 'none'",
-  "worker-src blob: 'self'", // R3F / Web Audio 通常依賴 blob URL 來產生 Worker
 ];
 
-for (const d of requiredDirectives) {
+for (const d of basicDirectives) {
   if (!csp.includes(d)) {
     console.error(`❌ CSP missing directive: ${d}`);
     process.exit(1);
   }
+}
+
+// 彈性檢查 worker-src：必須同時包含 blob: 與 'self'（相容任意順序）
+const workerSrcMatch = csp.match(/worker-src\s+([^;]+)/i);
+if (
+  !workerSrcMatch ||
+  !workerSrcMatch[1].includes('blob:') ||
+  !workerSrcMatch[1].includes("'self'")
+) {
+  console.error("❌ CSP missing valid worker-src directive (requires both 'self' and blob:)");
+  process.exit(1);
 }
 
 // ==========================================
@@ -106,7 +117,7 @@ if (!existsSync(join(distDir, 'fonts', 'NotoSansMath-Regular.woff'))) {
 }
 
 // ==========================================
-// 5. 🌟 優化 2：原始碼機密與全域環境變數洩漏掃描
+// 5. 原始碼未抽換環境變數語法掃描
 // ==========================================
 function scanJSFilesForSecrets(dir) {
   const files = readdirSync(dir);
@@ -116,7 +127,6 @@ function scanJSFilesForSecrets(dir) {
       scanJSFilesForSecrets(fullPath);
     } else if (extname(fullPath) === '.js') {
       const content = readFileSync(fullPath, 'utf8');
-      // 確保建置打包後沒有殘留未被 Vite 抽換的環境變數語法
       if (content.includes('import.meta.env.') || content.includes('process.env.')) {
         console.error(`❌ Potential environment variable leak detected in: ${fullPath}`);
         process.exit(1);
