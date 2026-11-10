@@ -62,8 +62,6 @@ function executeUnitaryMatrix(
   const size = state.length;
   const nextState = state.map((s) => ({ re: s.re, im: s.im }));
 
-  }
-
   const q = targets[0];
   const bitMask = 1 << (qubitCount - 1 - q); // Big-Endian 位遮罩
 
