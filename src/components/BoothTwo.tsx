@@ -1,7 +1,7 @@
 // src/components/BoothTwo.tsx
 import { useState, useRef, useEffect } from 'react';
 import { Text, Html } from '@react-three/drei';
-import { useSpring, a } from '@react-spring/three';
+import { useSpring, a } from '@react-three/drei';
 import { useQuantumStore } from '../store/quantumStore';
 import { sound } from '../audio/soundEngine';
 import { FONT_MATH_PATH } from '../constants';
@@ -10,15 +10,21 @@ import { PhaseDial } from './PhaseDial';
 import { InterferenceBurst } from './InterferenceBurst';
 
 export const BoothTwo = () => {
-  const amplitudes = useQuantumStore((state) => state.amplitudes);
-  const applyGate = useQuantumStore((state) => state.applyGate);
-  const reset = useQuantumStore((state) => state.reset);
+  // 1. 統一從 Store 獲取 Sprint 2 的連續相位 API (消除雙重真相源)
+  const {
+    amplitudes,
+    isSplit,
+    phaseAngle,
+    splitBoothTwo,
+    setPhaseAngle,
+    collideBoothTwo,
+    resetBoothTwo,
+  } = useQuantumStore();
 
-  const [isSplit, setIsSplit] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
 
   const [burstConfig, setBurstConfig] = useState<{
-    type: 'evaporate' | 'merge';
+    type: 'evaporate' | 'merge'; // 'merge' 保留給 Sprint 3 雙向粒子流
     position: [number, number, number];
   } | null>(null);
 
@@ -26,28 +32,17 @@ export const BoothTwo = () => {
   const lockReleaseRef = useRef<(() => void) | null>(null);
   const burstReleaseRef = useRef<(() => void) | null>(null);
 
+  // 初始化與清理
   useEffect(() => {
-    reset();
-    setIsSplit(false);
-
+    resetBoothTwo();
     return () => {
       if (timerRef.current !== null) clearTimeout(timerRef.current);
       lockReleaseRef.current?.();
       burstReleaseRef.current?.();
     };
-  }, [reset]);
+  }, [resetBoothTwo]);
 
-  const amp0 = amplitudes[0] || { modulus: 0, phase: 0 };
-  const amp1 = amplitudes[2] || { modulus: 0, phase: 0 };
-
-  const { h0, h1, opacity0, opacity1 } = useSpring({
-    h0: amp0.modulus * 2.5,
-    h1: amp1.modulus * 2.5,
-    opacity0: amp0.modulus > 0.05 ? (amp0.modulus > 0.9 ? 1.0 : 0.8) : 0.05,
-    opacity1: amp1.modulus > 0.05 ? (amp1.modulus > 0.9 ? 1.0 : 0.8) : 0.05,
-    config: { mass: 1, tension: 200, friction: 22 },
-  });
-
+  // 本地動畫鎖定防抖器
   const triggerAnimation = (duration: number) => {
     lockReleaseRef.current?.();
     if (timerRef.current !== null) clearTimeout(timerRef.current);
@@ -64,46 +59,55 @@ export const BoothTwo = () => {
     }, duration);
   };
 
+  // 防範 undefined ** 2 產生 NaN 的邊界陷阱
+  const probA = (amplitudes[0]?.modulus ?? 0) ** 2;
+  const probB = (amplitudes[2]?.modulus ?? 0) ** 2;
+
+  const { h0, h1, opacity0, opacity1 } = useSpring({
+    h0: probA * 2.5,
+    h1: probB * 2.5,
+    opacity0: probA > 0.05 ? (probA > 0.9 ? 1.0 : 0.8) : 0.05,
+    opacity1: probB > 0.05 ? (probB > 0.9 ? 1.0 : 0.8) : 0.05,
+    config: { mass: 1, tension: 200, friction: 22 },
+  });
+
+  // ① 分光 (H 門)
   const handleSplit = () => {
     if (isBusy || isSplit) return;
     sound.playLever();
-    applyGate('H', [0]);
-    setIsSplit(true);
+    splitBoothTwo();
     triggerAnimation(450);
   };
 
-  const handleRotatePhase = () => {
-    if (isBusy || !isSplit) return;
-    sound.playLever();
-    applyGate('Z', [0]);
-    triggerAnimation(400);
+  // ② 舵盤連續旋轉 P(φ) - 確保 60Hz 物理更新，僅限制動畫鎖頻率
+  const handleRotatePhase = (angle: number) => {
+    if (!isSplit) return;
+    setPhaseAngle(angle);
+    if (!isBusy) triggerAnimation(80); 
   };
 
+  // ③ 匯流對撞 (H 門)
   const handleCollide = () => {
     if (isBusy || !isSplit) return;
 
-    const isAntiPhase = Math.abs(amp1.phase - Math.PI) < 0.2;
+    // 解析機率
+    const pA = Math.cos(phaseAngle / 2) ** 2;
+    const pB = Math.sin(phaseAngle / 2) ** 2;
+    const diff = Math.abs(pA - pB);
 
-    burstReleaseRef.current?.();
-    burstReleaseRef.current = acquireAnimationLock();
-
-    // 音效與視覺嚴格同步：無論同相或反相，視覺上都是被相消的那一側發生「蒸發」
-    if (isAntiPhase) {
+    // 連續相位下：只有機率有顯著差異 (> 0.15) 時才觸發單側蒸發特效
+    if (diff > 0.15) {
+      const evaporateLeft = pA < pB;
+      burstReleaseRef.current?.();
+      burstReleaseRef.current = acquireAnimationLock();
       sound.playEvaporate();
       setBurstConfig({
         type: 'evaporate',
-        position: [-2, 0.8, 0], // 左側相消蒸發
-      });
-    } else {
-      sound.playEvaporate(); // 修正：同相時右側相消，同樣播放蒸發聲
-      setBurstConfig({
-        type: 'evaporate',
-        position: [2, 0.8, 0], // 右側相消蒸發
+        position: evaporateLeft ? [-2, 0.8, 0] : [2, 0.8, 0],
       });
     }
 
-    applyGate('H', [0]);
-    setIsSplit(false);
+    collideBoothTwo();
     triggerAnimation(600);
   };
 
@@ -113,13 +117,15 @@ export const BoothTwo = () => {
     burstReleaseRef.current = null;
   };
 
-  const isOppositePhase = Math.abs(amp1.phase - Math.PI) < 0.2;
+  // 判定目前是否處於反相狀態 (用於控制柱體顏色)
+  const isOppositePhase = Math.abs(phaseAngle - Math.PI) < 0.2;
 
   return (
     <group>
       <ambientLight intensity={0.5} />
       <directionalLight position={[0, 8, 4]} intensity={1.2} />
 
+      {/* 展台底座 */}
       <mesh position={[0, -0.6, 0]}>
         <boxGeometry args={[9, 0.8, 5]} />
         <meshStandardMaterial color="#111118" roughness={0.8} />
@@ -130,6 +136,7 @@ export const BoothTwo = () => {
         <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
       </mesh>
 
+      {/* Path A 光柱 */}
       <a.group position={[-2, 0, 0]}>
         <a.mesh position-y={h0.to((h) => h / 2)}>
           <cylinderGeometry args={[0.45, 0.45, 1, 32]} />
@@ -147,6 +154,7 @@ export const BoothTwo = () => {
         </Text>
       </a.group>
 
+      {/* Path B 光柱 (顏色隨相位變化) */}
       <a.group position={[2, 0, 0]}>
         <a.mesh position-y={h1.to((h) => h / 2)}>
           <cylinderGeometry args={[0.45, 0.45, 1, 32]} />
@@ -172,6 +180,7 @@ export const BoothTwo = () => {
         />
       )}
 
+      {/* ① 分光控制桿 */}
       <group
         position={[-3.2, 0.1, 1.2]}
         onClick={handleSplit}
@@ -205,13 +214,15 @@ export const BoothTwo = () => {
         </Html>
       </group>
 
+      {/* ② 連續相位舵盤 */}
       <PhaseDial
-        phase={amp1.phase}
-        onRotatePhase={handleRotatePhase}
+        phase={phaseAngle}
+        onPhaseChange={handleRotatePhase}
         disabled={isBusy || !isSplit}
         isStandby={!isSplit}
       />
 
+      {/* ③ 對撞控制桿 */}
       <group
         position={[3.2, 0.1, 1.2]}
         onClick={handleCollide}
