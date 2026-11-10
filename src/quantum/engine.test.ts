@@ -20,8 +20,8 @@ describe('Quantum Engine Integrity & Big-Endian Verification', () => {
 
   it('3. 驗證 CNOT 反向防呆: ctrl=q1, tgt=q0 作用於 |10⟩ 應保持 |10⟩', () => {
     const init = initZeroState(2);
-    const step1 = applyGatePure(init.amplitudes, 0, 'X', [0], 2); // q0=1, q1=0
-    const step2 = applyGatePure(step1.amplitudes, step1.refIdx, 'CNOT', [1, 0], 2); // q1 沒激發，不觸發翻轉
+    const step1 = applyGatePure(init.amplitudes, 0, 'X', [0], 2);
+    const step2 = applyGatePure(step1.amplitudes, step1.refIdx, 'CNOT', [1, 0], 2);
     expect(step2.amplitudes[2].modulus).toBeCloseTo(1.0);
     expect(step2.amplitudes[3].modulus).toBeCloseTo(0.0);
   });
@@ -33,7 +33,7 @@ describe('Global Phase Lock Hysteresis (processStateVector)', () => {
       { re: Math.sqrt(0.49), im: 0 },
       { re: 0, im: 0 },
       { re: 0, im: 0 },
-      { re: Math.sqrt(0.51), im: 0 }, // 0.51 / 0.49 ≈ 1.04 < 1.5
+      { re: Math.sqrt(0.51), im: 0 },
     ];
     const { refIdx } = processStateVector(dummy, 0);
     expect(refIdx).toBe(0);
@@ -44,9 +44,30 @@ describe('Global Phase Lock Hysteresis (processStateVector)', () => {
       { re: Math.sqrt(0.3), im: 0 },
       { re: 0, im: 0 },
       { re: 0, im: 0 },
-      { re: Math.sqrt(0.7), im: 0 }, // 0.70 / 0.30 ≈ 2.33 > 1.5
+      { re: Math.sqrt(0.7), im: 0 },
     ];
     const { refIdx } = processStateVector(dummy, 0);
     expect(refIdx).toBe(3);
+  });
+});
+
+describe('Phase & Normalization Accuracy', () => {
+  it('6. 驗證 Z 門相位翻轉: Z(q0) 作用於 |+0⟩ 應使 |10⟩ 振幅相位變為 π', () => {
+    const init = initZeroState(2);
+    const h = applyGatePure(init.amplitudes, 0, 'H', [0], 2);
+    expect(h.amplitudes[2].phase).toBeCloseTo(0, 5);
+
+    const z = applyGatePure(h.amplitudes, h.refIdx, 'Z', [0], 2);
+    expect(z.amplitudes[0].phase).toBeCloseTo(0, 5);
+    expect(z.amplitudes[2].phase).toBeCloseTo(Math.PI, 5);
+  });
+
+  it('7. 驗證 H 門標準化: H(q0) 作用於 |00⟩ 應產生兩個模長 1/√2 的振幅', () => {
+    const init = initZeroState(2);
+    const { amplitudes } = applyGatePure(init.amplitudes, 0, 'H', [0], 2);
+    expect(amplitudes[0].modulus).toBeCloseTo(1 / Math.SQRT2, 5);
+    expect(amplitudes[2].modulus).toBeCloseTo(1 / Math.SQRT2, 5);
+    expect(amplitudes[1].modulus).toBeCloseTo(0, 5);
+    expect(amplitudes[3].modulus).toBeCloseTo(0, 5);
   });
 });
