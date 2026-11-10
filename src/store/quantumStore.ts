@@ -37,6 +37,7 @@ export interface QuantumState {
   // 連續相位干涉專用 API (Sprint 2 展台 2)
   isSplit: boolean;
   phaseAngle: number; // 弧度 [0, 2π)
+  _afterHSnapshot: { amplitudes: ComplexAmplitude[]; refIdx: number } | null; // 🌟 效能優化：態向量快取
   splitBoothTwo: () => void;
   setPhaseAngle: (angle: number) => void;
   collideBoothTwo: () => void;
@@ -54,9 +55,8 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
   applyGate: (gate, targets) => {
     const { amplitudes, refIdx, qubitCount } = get();
     
-    // 防禦性複製：剝除派生欄位，強制引擎重新計算
-    const rawInput = amplitudes.map((a) => ({ re: a.re, im: a.im }));
-    const nextState = applyGatePure(rawInput, refIdx, gate, targets, qubitCount);
+    // 🌟 優化：引擎已具備防禦性拷貝，直接傳入 amplitudes
+    const nextState = applyGatePure(amplitudes, refIdx, gate, targets, qubitCount);
 
     set({
       amplitudes: nextState.amplitudes,
@@ -82,7 +82,7 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
       return p;
     });
 
-    const rand = rng() * totalProb; // 縮放至實際總機率
+    const rand = rng() * totalProb;
     let cumulative = 0;
     
     for (let i = 0; i < probs.length; i++) {
@@ -90,7 +90,7 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
       if (rand <= cumulative) return i;
     }
     
-    return maxIdx; // 浮點誤差的絕對底線防護
+    return maxIdx;
   },
 
   collapse: (rng = Math.random) => {
@@ -98,7 +98,6 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
     const outcomeIdx = measureOutcome(rng);
     const size = 1 << qubitCount;
 
-    // 直接構造坍縮後的基態 |outcomeIdx⟩
     const collapsedAmps: ComplexAmplitude[] = Array.from({ length: size }, (_, i) => ({
       re: i === outcomeIdx ? 1 : 0,
       im: 0,
@@ -109,7 +108,7 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
     set({
       amplitudes: collapsedAmps,
       refIdx: outcomeIdx,
-      isMaximallyEntangled: false, // 坍縮後必定為可分純態，解除糾纏
+      isMaximallyEntangled: false,
     });
 
     return outcomeIdx;
@@ -121,7 +120,8 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
       ...zero, 
       isMaximallyEntangled: false,
       isSplit: false,
-      phaseAngle: 0
+      phaseAngle: 0,
+      _afterHSnapshot: null
     });
   },
   resetBoothOne: () => get().reset(),
@@ -131,37 +131,43 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
   // ==========================================
   isSplit: false,
   phaseAngle: 0,
+  _afterHSnapshot: null,
 
   splitBoothTwo: () => {
     const { qubitCount } = get();
     const zero = initZeroState(qubitCount);
-    // 防禦性複製輸入
-    const rawInput = zero.amplitudes.map(a => ({ re: a.re, im: a.im }));
-    const afterH = applyGatePure(rawInput, zero.refIdx, 'H', [0], qubitCount);
+    
+    // 🌟 優化：直接傳入 amplitudes
+    const afterH = applyGatePure(zero.amplitudes, zero.refIdx, 'H', [0], qubitCount);
     
     set({
       isSplit: true,
       phaseAngle: 0,
       amplitudes: afterH.amplitudes,
       refIdx: afterH.refIdx,
-      isMaximallyEntangled: false, // 單量子比特 H 門不會產生糾纏
+      isMaximallyEntangled: false,
+      _afterHSnapshot: afterH, // 🌟 建立快取，供 setPhaseAngle 60Hz 拖曳時復用
     });
   },
 
   setPhaseAngle: (angle: number) => {
     const normAngle = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-    const { qubitCount, isSplit } = get();
+    const { qubitCount, isSplit, _afterHSnapshot } = get();
 
-    if (!isSplit) {
+    if (!isSplit || !_afterHSnapshot) {
       set({ phaseAngle: normAngle });
       return;
     }
 
-    // 從基底態重算 H -> P(phi)，杜絕數值誤差累積
-    const zero = initZeroState(qubitCount);
-    const rawInput = zero.amplitudes.map(a => ({ re: a.re, im: a.im }));
-    const afterH = applyGatePure(rawInput, zero.refIdx, 'H', [0], qubitCount);
-    const afterP = applyPhaseGate(afterH.amplitudes, normAngle, 0, qubitCount, afterH.refIdx);
+    // 🌟 效能優化：直接從 _afterHSnapshot (H 門之後的基底態) 計算相移
+    // 徹底消除每幀重建 |00> 與重新計算 H 門的 GC 與浮點運算開銷
+    const afterP = applyPhaseGate(
+      _afterHSnapshot.amplitudes, 
+      normAngle, 
+      0, 
+      qubitCount, 
+      _afterHSnapshot.refIdx
+    );
 
     set({
       phaseAngle: normAngle,
@@ -175,14 +181,15 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
     const { amplitudes, refIdx, qubitCount, isSplit } = get();
     if (!isSplit) return;
 
-    const rawInput = amplitudes.map((a) => ({ re: a.re, im: a.im }));
-    const finalState = applyGatePure(rawInput, refIdx, 'H', [0], qubitCount);
+    // 🌟 優化：直接傳入 amplitudes
+    const finalState = applyGatePure(amplitudes, refIdx, 'H', [0], qubitCount);
     
     set({
       isSplit: false,
       amplitudes: finalState.amplitudes,
       refIdx: finalState.refIdx,
       isMaximallyEntangled: false,
+      _afterHSnapshot: null, // 對撞後清空快取
     });
   },
 
