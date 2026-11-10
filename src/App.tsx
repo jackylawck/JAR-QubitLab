@@ -2,8 +2,10 @@
 import { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import * as THREE from 'three';
 import { BoothOne } from './components/BoothOne';
 import { BoothTwo } from './components/BoothTwo';
+import { QuantumField } from './components/QuantumField';
 import { useAnimationLock } from './hooks/useAnimationLock';
 
 export default function App() {
@@ -16,15 +18,22 @@ export default function App() {
       <Canvas 
         camera={{ position: [0, 6, 11], fov: 50 }}
         dpr={[1, 2]}
-        // 確保首幀與待機微觀動態即時流暢，動畫鎖定時持續高幀率
         frameloop={isAnimating ? 'always' : 'always'}
         className="absolute inset-0 z-0"
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.15
+        }}
       >
-        <color attach="background" args={['#0a0a0f']} />
+        <color attach="background" args={['#030712']} />
 
-        {/* 基礎全域光照：環境光 + 主定向光 + 補光，防止模型死黑 */}
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
+        {/* 🌟 微觀量子真空浮動場 (J.A.R. 黑洞點陣幾何移植) */}
+        <QuantumField count={500} />
+
+        {/* 基礎全域光照：環境光 + 主定向光 + 補光 */}
+        <ambientLight intensity={0.9} />
+        <directionalLight position={[5, 10, 5]} intensity={1.3} castShadow />
         <pointLight position={[-5, 5, -5]} intensity={0.6} />
 
         <OrbitControls 
