@@ -1,8 +1,10 @@
 // src/audio/soundEngine.ts
+
 class QuantumAudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private isMuted: boolean = false;
+  private unlocked: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -21,6 +23,24 @@ class QuantumAudioEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
+  }
+
+  // 🌟 新增：全域解除掛起 (適用於 iOS Safari 嚴格策略)
+  public unlock() {
+    if (this.unlocked || typeof window === 'undefined') return;
+    this.init();
+    if (!this.ctx) return;
+
+    // 播放一個極短的無聲震盪器，強制喚醒 AudioContext
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    gain.gain.value = 0;
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(0);
+    osc.stop(0.01);
+
+    this.unlocked = true;
   }
 
   public setMuted(muted: boolean) {
