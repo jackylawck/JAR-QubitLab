@@ -61,34 +61,44 @@ class QuantumAudioEngine {
     osc.stop(t + 0.1);
   }
 
-  // 2. 展台 1：拍下測量快門的清脆聲 (模擬玻璃/金屬相機快門)
+  // 2. 展台 1：拍下測量快門的雙層水晶質感聲
   playShutter() {
     this.init();
     if (!this.ctx || !this.masterGain || this.isMuted) return;
     const t = this.ctx.currentTime;
 
-    // 高頻金屬聲
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(2500, t);
-    osc.frequency.exponentialRampToValueAtTime(800, t + 0.05);
+    const base = this.ctx.createOscillator();
+    const baseGain = this.ctx.createGain();
+    base.type = 'triangle';
+    base.frequency.setValueAtTime(2400, t);
+    base.frequency.exponentialRampToValueAtTime(1200, t + 0.04);
+    baseGain.gain.setValueAtTime(0.25, t);
+    baseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    
+    base.connect(baseGain);
+    baseGain.connect(this.masterGain);
+    base.start(t);
+    base.stop(t + 0.06);
 
-    gain.gain.setValueAtTime(0.3, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(t);
-    osc.stop(t + 0.08);
+    const overtone = this.ctx.createOscillator();
+    const overtoneGain = this.ctx.createGain();
+    overtone.type = 'sine';
+    overtone.frequency.setValueAtTime(2400 * 2.76, t); 
+    overtoneGain.gain.setValueAtTime(0.12, t);
+    overtoneGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    
+    overtone.connect(overtoneGain);
+    overtoneGain.connect(this.masterGain);
+    overtone.start(t);
+    overtone.stop(t + 0.15);
   }
 
-  // 3. 展台 2：相消干涉時的蒸發聲 (白噪音 + 帶通濾波)
+  // 3. 展台 2：相消干涉的蒸發聲
   playEvaporate() {
     this.init();
     if (!this.ctx || !this.masterGain || this.isMuted) return;
     const t = this.ctx.currentTime;
-    const bufferSize = this.ctx.sampleRate * 0.4; // 0.4秒
+    const bufferSize = this.ctx.sampleRate * 0.4; 
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
     
@@ -102,7 +112,7 @@ class QuantumAudioEngine {
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'bandpass';
     filter.frequency.setValueAtTime(1000, t);
-    filter.frequency.linearRampToValueAtTime(4000, t + 0.3); // 頻率向上飄升，模擬蒸發
+    filter.frequency.linearRampToValueAtTime(4000, t + 0.3); 
     filter.Q.value = 1.5;
 
     const gain = this.ctx.createGain();
@@ -114,9 +124,143 @@ class QuantumAudioEngine {
     gain.connect(this.masterGain);
 
     noise.start(t);
+    noise.stop(t + 0.4); 
   }
 
-  // ... 保留先前的 playTick, playVictoryChord 等
+  // 4. 展台 2：相長干涉的能量合體聲
+  playMerge() {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const t = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(80, t);
+    osc.frequency.linearRampToValueAtTime(220, t + 0.4);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(600, t);
+
+    gain.gain.setValueAtTime(0.01, t);
+    gain.gain.linearRampToValueAtTime(0.45, t + 0.35);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(t);
+    osc.stop(t + 0.6);
+  }
+
+  // 5. 展台 3：抽樣滴答聲 (音高隨步數遞增)
+  playTick(stepIndex = 0) {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(700 + stepIndex * 20, t);
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    
+    osc.start(t);
+    osc.stop(t + 0.04);
+  }
+
+  // 6. 展台 3：單次測量開獎聲 (低頻衝擊 + 金屬鈴音)
+  playCollapse() {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    
+    // 低頻衝擊
+    const subOsc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(140, t);
+    subOsc.frequency.exponentialRampToValueAtTime(32, t + 0.22);
+    subGain.gain.setValueAtTime(0.35, t);
+    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    subOsc.connect(subGain);
+    subGain.connect(this.masterGain);
+    subOsc.start(t);
+    subOsc.stop(t + 0.22);
+    
+    // 金屬鈴音
+    const bellOsc = this.ctx.createOscillator();
+    const bellGain = this.ctx.createGain();
+    bellOsc.type = 'triangle';
+    bellOsc.frequency.setValueAtTime(1560, t);
+    bellGain.gain.setValueAtTime(0.2, t);
+    bellGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    bellOsc.connect(bellGain);
+    bellGain.connect(this.masterGain);
+    bellOsc.start(t);
+    bellOsc.stop(t + 0.35);
+  }
+
+  // 7. 展台 3：糾纏驗證成功通關音 (C-E-G 和弦)
+  playVictoryChord() {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+    
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      const startTime = t + idx * 0.08; // 琶音效果
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      gain.gain.setValueAtTime(0.001, startTime);
+      gain.gain.linearRampToValueAtTime(0.18, startTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.9);
+      
+      osc.connect(gain);
+      gain.connect(this.masterGain!);
+      osc.start(startTime);
+      osc.stop(startTime + 0.9);
+    });
+  }
+
+  // 8. 展台 3：雜質警告音 (低頻鋸齒波)
+  playGlitch() {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+    
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(380, t);
+    filter.Q.setValueAtTime(1.5, t);
+    
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(85, t);
+    osc.frequency.exponentialRampToValueAtTime(45, t + 0.14);
+    
+    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    
+    osc.start(t);
+    osc.stop(t + 0.14);
+  }
 }
 
 export const sound = new QuantumAudioEngine();
