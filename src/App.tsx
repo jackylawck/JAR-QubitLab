@@ -8,16 +8,16 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Html, PerspectiveCamera } from '@react-three/drei';
 import { BoothOne } from './components/BoothOne';
 import { BoothTwo } from './components/BoothTwo';
-import { BoothThree } from './components/BoothThree'; // 🌟 匯入展台 3
+import { BoothThree } from './components/BoothThree';
 import { LanguageToggle } from './components/LanguageToggle';
 import { GovernanceNotice } from './components/GovernanceNotice';
 import { ConsoleBoothOne } from './components/console/ConsoleBoothOne';
 import { ConsoleBoothTwo } from './components/console/ConsoleBoothTwo';
-import { ConsoleBoothThree } from './components/console/ConsoleBoothThree'; // 🌟 匯入展台 3 控制台
+import { ConsoleBoothThree } from './components/console/ConsoleBoothThree';
 import { useAnimationLock } from './hooks/useAnimationLock';
 import { useLocaleStore } from './store/localeStore';
 import { useQuantumStore } from './store/quantumStore';
-import { useTensorStore } from './store/tensorStore'; // 🌟 匯入展台 3 狀態庫
+import { useTensorStore } from './store/tensorStore';
 import { sound } from './audio/soundEngine';
 
 function BoothFallback() {
@@ -34,20 +34,56 @@ function BoothFallback() {
   );
 }
 
+// 🌟 優化 1：抽離展台切換按鈕組件 (DRY)
+// 避免重複的 className 邏輯，讓 Header 更加乾淨易讀
+const BoothTab = ({ 
+  label, 
+  isActive, 
+  onClick, 
+  colorTheme 
+}: { 
+  label: string; 
+  isActive: boolean; 
+  onClick: () => void;
+  colorTheme: 'blue' | 'cyan' | 'purple'
+}) => {
+  const themeClasses = {
+    blue: 'bg-blue-600 ring-blue-400',
+    cyan: 'bg-cyan-600 ring-cyan-400',
+    purple: 'bg-purple-600 ring-purple-400',
+  };
+
+  return (
+    <button 
+      onClick={onClick} 
+      className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
+        isActive ? `${themeClasses[colorTheme]} text-white ring-1` : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+      }`}
+    >
+      {label}
+    </button>
+  );
+};
+
 export default function App() {
   const { isAnimating } = useAnimationLock();
-  // 🌟 擴展 activeBooth 支援展台 3
   const [activeBooth, setActiveBooth] = useState<'one' | 'two' | 'three'>('one');
   const [isExplaining, setIsExplaining] = useState(false);
-  const { locale } = useLocaleStore();
+  
+  // 🌟 只需要 t，不需要 locale
+  const t = useLocaleStore((s) => s.t);
+  const locale = useLocaleStore((s) => s.locale);
 
   const resetBoothOne = useQuantumStore((s) => s.resetBoothOne);
   const resetBoothTwo = useQuantumStore((s) => s.resetBoothTwo);
-  const resetTensor = useTensorStore((s) => s.reset); // 🌟 取得展台 3 的 reset
+  const resetTensor = useTensorStore((s) => s.reset);
 
+  // 🌟 優化 2：修正初始化依賴，避免不必要的重新渲染
+  // 只在初次掛載時重置展台一
   useEffect(() => {
     resetBoothOne();
-  }, [resetBoothOne]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const unlockAudio = () => {
@@ -67,8 +103,10 @@ export default function App() {
     if (booth === activeBooth) return;
 
     setIsExplaining(false);
+    
+    // 🌟 優化 3：切換展台時加入音效回饋
+    sound.playClick?.() || sound.playLever(); 
 
-    // 🌟 根據選擇的展台重置對應狀態
     if (booth === 'one') {
       resetBoothOne();
     } else if (booth === 'two') {
@@ -90,31 +128,25 @@ export default function App() {
           </div>
           <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
             <LanguageToggle />
-            <button 
+            {/* 🌟 套用重構後的 BoothTab 組件 */}
+            <BoothTab 
+              label={locale === 'zh' ? '展台 1' : 'Booth 1'} 
+              isActive={activeBooth === 'one'} 
               onClick={() => handleSwitchBooth('one')} 
-              className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
-                activeBooth === 'one' ? 'bg-blue-600 text-white ring-1 ring-blue-400' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-              }`}
-            >
-              {locale === 'zh' ? '展台 1' : 'Booth 1'}
-            </button>
-            <button 
+              colorTheme="blue" 
+            />
+            <BoothTab 
+              label={locale === 'zh' ? '展台 2' : 'Booth 2'} 
+              isActive={activeBooth === 'two'} 
               onClick={() => handleSwitchBooth('two')} 
-              className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
-                activeBooth === 'two' ? 'bg-cyan-600 text-white ring-1 ring-cyan-400' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-              }`}
-            >
-              {locale === 'zh' ? '展台 2' : 'Booth 2'}
-            </button>
-            {/* 🌟 加入展台 3 切換按鈕 */}
-            <button 
+              colorTheme="cyan" 
+            />
+            <BoothTab 
+              label={locale === 'zh' ? '展台 3' : 'Booth 3'} 
+              isActive={activeBooth === 'three'} 
               onClick={() => handleSwitchBooth('three')} 
-              className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
-                activeBooth === 'three' ? 'bg-purple-600 text-white ring-1 ring-purple-400' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-              }`}
-            >
-              {locale === 'zh' ? '展台 3' : 'Booth 3'}
-            </button>
+              colorTheme="purple" 
+            />
           </div>
         </header>
 
@@ -123,7 +155,6 @@ export default function App() {
           frameloop={isAnimating ? 'always' : 'demand'}
           gl={{ antialias: true }} 
         >
-          {/* 🌟 動態相機配置：展台 3 需要更高的俯角來俯視 2x2 矩陣 */}
           <PerspectiveCamera 
             makeDefault 
             position={activeBooth === 'three' ? [0, 8, 11] : [0, 4.5, 9.5]} 
@@ -145,7 +176,6 @@ export default function App() {
           />
 
           <Suspense fallback={<BoothFallback />}>
-            {/* 🌟 根據 activeBooth 條件渲染對應展台 */}
             {activeBooth === 'one' && <BoothOne pureVisual />}
             {activeBooth === 'two' && <BoothTwo pureVisual />}
             {activeBooth === 'three' && <BoothThree />}
@@ -158,7 +188,6 @@ export default function App() {
       </div>
 
       <footer className="w-full bg-slate-900/95 border-t border-slate-800/80 p-3 sm:p-4 z-20 backdrop-blur-md flex flex-col justify-between shrink-0 h-[240px] sm:h-[260px] pb-safe">
-        {/* 🌟 根據 activeBooth 條件渲染對應控制台 */}
         {activeBooth === 'one' && <ConsoleBoothOne isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
         {activeBooth === 'two' && <ConsoleBoothTwo isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
         {activeBooth === 'three' && <ConsoleBoothThree isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
