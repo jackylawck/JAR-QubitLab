@@ -1,4 +1,5 @@
 // src/audio/soundEngine.ts
+import { STORAGE_KEYS } from '../constants'; // 🌟 1. 引入常數
 
 class QuantumAudioEngine {
   private ctx: AudioContext | null = null;
@@ -8,7 +9,15 @@ class QuantumAudioEngine {
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.isMuted = localStorage.getItem('sound_muted') === 'true';
+      try {
+        // 🌟 2. 使用常數避免魔法字串，並加入隱私模式存取防護
+        const saved = localStorage.getItem(STORAGE_KEYS.SOUND_MUTED);
+        if (saved !== null) {
+          this.isMuted = saved === 'true';
+        }
+      } catch (e) {
+        console.warn('[JAR-QubitLab] localStorage access denied in privacy mode.');
+      }
     }
   }
 
@@ -25,7 +34,7 @@ class QuantumAudioEngine {
     }
   }
 
-  // 🌟 新增：全域解除掛起 (適用於 iOS Safari 嚴格策略)
+  // 全域解除掛起 (適用於 iOS Safari 嚴格策略)
   public unlock() {
     if (this.unlocked || typeof window === 'undefined') return;
     this.init();
@@ -46,7 +55,10 @@ class QuantumAudioEngine {
   public setMuted(muted: boolean) {
     this.isMuted = muted;
     if (typeof window !== 'undefined') {
-      localStorage.setItem('sound_muted', String(muted));
+      try {
+        // 🌟 3. 使用常數，並加入隱私模式寫入防護
+        localStorage.setItem(STORAGE_KEYS.SOUND_MUTED, String(muted));
+      } catch (e) {} 
     }
     if (this.ctx && this.masterGain) {
       this.masterGain.gain.setValueAtTime(muted ? 0 : 0.7, this.ctx.currentTime);
@@ -236,8 +248,12 @@ class QuantumAudioEngine {
     const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
     
     notes.forEach((freq, idx) => {
-      const osc = this.ctx!.createOscillator();
-      const gain = this.ctx!.createGain();
+      // 🌟 4. 型別安全修正：雖然 init() 確保 ctx 不為 null，但在 forEach 的 Closure 內，
+      // TS 無法保證 this.ctx 在執行當下絕對不為 null。加入 Optional Chaining (?.) 與 if 檢查。
+      if (!this.ctx || !this.masterGain) return;
+      
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
       const startTime = t + idx * 0.08; // 琶音效果
       
       osc.type = 'sine';
@@ -247,7 +263,7 @@ class QuantumAudioEngine {
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.9);
       
       osc.connect(gain);
-      gain.connect(this.masterGain!);
+      gain.connect(this.masterGain);
       osc.start(startTime);
       osc.stop(startTime + 0.9);
     });
