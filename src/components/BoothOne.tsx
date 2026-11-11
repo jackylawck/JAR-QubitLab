@@ -67,8 +67,10 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
   });
 
   return (
-    <a.group position={position} scale={scale}>
-      <a.mesh>
+    // 🌟 關鍵修復：外層 group 不帶 scale，座標固定在 [x, y, z]
+    <group position={position}>
+      {/* 縮放動畫只作用於 3D 網格本體 */}
+      <a.mesh scale={scale}>
         <sphereGeometry args={[1, 32, 32]} />
         <a.meshStandardMaterial
           color={baseColor}
@@ -81,12 +83,13 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
         />
       </a.mesh>
       
-      <Html position={[0, -2.2, 0]} center style={{ pointerEvents: 'none' }}>
+      {/* 🌟 Html 獨立於 scale 之外，永遠穩固錨定在基底正下方 -1.8，不受機率縮放影響 */}
+      <Html position={[0, -1.8, 0]} center style={{ pointerEvents: 'none' }}>
         <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2.5 py-1 rounded-md border border-white/20 shadow-lg backdrop-blur-sm">
           {label}
         </div>
       </Html>
-    </a.group>
+    </group>
   );
 };
 
@@ -115,10 +118,8 @@ export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
   const leftModulus = Math.sqrt(p0);
   const rightModulus = Math.sqrt(p1);
 
-  // 掛載時 Store 已由 App.tsx handleSwitchBooth 重置為乾淨的 |00⟩
   const prevProb = useRef({ p0, p1 });
 
-  // 卸載生命週期清理
   useEffect(() => {
     return () => {
       if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
@@ -127,7 +128,6 @@ export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
     };
   }, []);
 
-  // 狀態響應式坍縮動畫
   useEffect(() => {
     const wasMixed = prevProb.current.p0 > 0.1 && prevProb.current.p1 > 0.1;
     const isPure = p0 > 0.9 || p1 > 0.9;
