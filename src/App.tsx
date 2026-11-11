@@ -9,6 +9,7 @@ import { OrbitControls, Html } from '@react-three/drei';
 import { BoothOne } from './components/BoothOne';
 import { BoothTwo } from './components/BoothTwo';
 import { LanguageToggle } from './components/LanguageToggle';
+import { GovernanceNotice } from './components/GovernanceNotice'; // 🌟 1. 引入合規聲明組件
 import { ConsoleBoothOne } from './components/console/ConsoleBoothOne';
 import { ConsoleBoothTwo } from './components/console/ConsoleBoothTwo';
 import { useAnimationLock } from './hooks/useAnimationLock';
@@ -43,18 +44,26 @@ export default function App() {
     resetBoothOne();
   }, [resetBoothOne]);
 
+  // 🌟 2. 雙重手勢監聽，確保 iOS Safari 100% 順利喚醒 Web Audio
   useEffect(() => {
     const unlockAudio = () => {
       sound.unlock();
       window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
     };
     window.addEventListener('pointerdown', unlockAudio, { once: true });
-    return () => window.removeEventListener('pointerdown', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
   }, []);
 
   const handleSwitchBooth = (booth: 'one' | 'two') => {
-    // 🌟 補回防呆：阻擋同展台重複點擊，徹底消滅無意義的重置與假坍縮
     if (booth === activeBooth) return;
+
+    // 🌟 3. 切換展台時同步收起原理解析面板，維持乾淨的控制介面
+    setIsExplaining(false);
 
     if (booth === 'one') {
       resetBoothOne();
@@ -132,6 +141,9 @@ export default function App() {
           <ConsoleBoothTwo isExplaining={isExplaining} setIsExplaining={setIsExplaining} />
         )}
       </footer>
+
+      {/* 🌟 4. 掛載合規治理聲明彈窗按鈕 */}
+      <GovernanceNotice />
     </div>
   );
 }
