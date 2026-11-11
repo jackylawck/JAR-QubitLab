@@ -1,34 +1,78 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
-  <head>
-    <meta charset="UTF-8" />
-    
-    <!-- 
-      Project: J.A.R. QubitLab (Joint Applied Research)
-      Creator: 羅子淇 Jacky Law
-      Profile: https://jackylawck.github.io/jackylawck
-    -->
-
-    <!-- CSP: 嚴格且相容 Web Worker (R3F) 與 Web Audio -->
-    <meta 
-      http-equiv="Content-Security-Policy" 
-      content="default-src 'self'; script-src 'self'; object-src 'none'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' blob:;" 
-    />
-    
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚛️</text></svg>" />
-    
-    <!-- 針對 iPhone 等行動裝置的沈浸式/PWA 體驗優化 -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#030712" />
-    
-    <title>J.A.R. QubitLab | 量子微觀實驗室</title>
-  </head>
+<html lang="zh-HK" prefix="og: https://ogp.me/ns#">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
   
-  <!-- touch-none 徹底封鎖 iOS Safari 的橡皮筋回彈與滑動返回手勢 -->
-  <body class="bg-gray-950 text-gray-100 overflow-hidden select-none touch-none">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <!-- 
+    Project: J.A.R. QubitLab (Joint Applied Research)
+    Creator: 羅子淇 Jacky Law
+    Profile: https://jackylawck.github.io/jackylawck
+    Zero Data Retention · 100% Client-side In-memory Quantum Execution
+  -->
+
+  <!-- 🔍 基礎 SEO 核心標籤 -->
+  <title>⚛️ J.A.R. QubitLab | 互動式 3D 量子微觀實驗室 (Interactive Quantum Lab)</title>
+  <meta name="description" content="J.A.R. QubitLab 是一款基於 WebGL / Three.js 打造的高保真量子力學實驗室。具備物理誠實的零垃圾回收（Zero-GC）演化引擎、連續相位干涉儀、單量子疊加與坍縮觀測，支援行動端極致流暢操作。">
+  <meta name="keywords" content="量子計算, 量子力學, Qubit, Bloch Sphere, Three.js, WebGL, 3D模擬器, 馬赫-曾德爾干涉儀, Hadamard門, 量子疊加, 量子坍縮, Zero-GC, PWA, 羅子淇, Jacky Law">
+  <meta name="author" content="J.A.R. Joint Applied Research">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://jackylawck.github.io/JAR-QubitLab/">
+
+  <!-- 🔑 Google Search Console 驗證 -->
+  <meta name="google-site-verification" content="JZ5UohX-CcP_fQV0_DI9VadkKY4ZoTTkUifL88-fIcY" />
+
+  <!-- 🌐 Open Graph / Facebook / LinkedIn 社交卡片 -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jackylawck.github.io/JAR-QubitLab/">
+  <meta property="og:title" content="⚛️ J.A.R. QubitLab | 互動式 3D 量子微觀實驗室">
+  <meta property="og:description" content="探索微觀量子世界的物理誠實模擬！可視化量子疊加態、測量坍縮與馬赫-曾德爾干涉儀機率搬運。純前端無追蹤、零記憶體抖動。">
+  <meta property="og:image" content="https://jackylawck.github.io/JAR-QubitLab/JARQubitLab512icon.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="J.A.R. QubitLab 量子實驗室標誌">
+  <meta property="og:locale" content="zh_HK">
+  <meta property="og:site_name" content="J.A.R. QubitLab">
+
+  <!-- 🐦 Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="⚛️ J.A.R. QubitLab | 3D Interactive Quantum Lab">
+  <meta name="twitter:description" content="流暢無卡頓的 WebGL 量子實驗室。即時探索單 Qubit 態向量演化、相位調整與波函數相消干涉。">
+  <meta name="twitter:image" content="https://jackylawck.github.io/JAR-QubitLab/JARQubitLab512icon.png">
+
+  <!-- 📱 PWA 與手機加入主畫面設定 -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="./JARQubitLab192icon.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./JARQubitLab512icon.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="./JARQubitLab192icon.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="./JARQubitLab512icon.png">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="QubitLab">
+  <meta name="application-name" content="J.A.R. QubitLab">
+  <meta name="theme-color" content="#030712">
+
+  <!-- 🛡️ 企業級資安策略：CSP、Permissions-Policy 與 Referrer 隔離 -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: blob: https://jackylawck.github.io;
+    font-src 'self' data:;
+    connect-src 'self' data: blob:;
+    media-src 'self' data:;
+    worker-src 'self' blob:;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'none';
+  ">
+  <meta http-equiv="Permissions-Policy" content="accelerometer=(), gyroscope=(), microphone=(), camera=(), geolocation=(), payment=()">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+</head>
+<body class="bg-gray-950 text-gray-100 overflow-hidden select-none touch-none">
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 </html>
