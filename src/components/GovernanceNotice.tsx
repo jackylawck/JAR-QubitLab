@@ -1,99 +1,213 @@
+// src/components/GovernanceNotice.tsx
 /*
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+ * Classification: PUBLIC COMPLIANCE & LEGAL SPECIFICATION
  */
 import { useState } from 'react';
 import { useLocaleStore } from '../store/localeStore';
 
+type TabType = 'scope' | 'export' | 'privacy' | 'disclaimer';
+
 export const GovernanceNotice = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('scope');
   const locale = useLocaleStore((s) => s.locale);
 
   return (
     <>
-      {/* 觸發按鈕：建議放置於畫面右下角或 Footer */}
+      {/* 觸發入口：懸浮於底部右側，低調具專業感 */}
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-2 right-2 z-40 text-[9px] sm:text-[10px] text-slate-500 hover:text-sky-400 font-mono tracking-widest transition-colors opacity-60 hover:opacity-100"
+        className="fixed bottom-2.5 right-3 z-40 text-[9px] sm:text-[10px] text-slate-400 hover:text-sky-400 font-mono tracking-widest transition-all bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 px-2 py-0.5 rounded shadow-sm backdrop-blur-sm cursor-pointer"
+        aria-label="Compliance & Legal Notice"
       >
-        GOVERNANCE & COMPLIANCE
+        🛡️ {locale === 'zh' ? '合規與法規治理' : 'GOVERNANCE & COMPLIANCE'}
       </button>
 
-      {/* 模態框 (Modal) */}
+      {/* 模態彈窗 (Modal) */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm touch-none">
-          <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto bg-[#090d16] border border-slate-700 rounded-lg shadow-2xl p-5 sm:p-8">
-            <button
-              onClick={() => setIsOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
-            >
-              ✕
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md">
+          <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col bg-[#090d16] border border-slate-700/80 rounded-xl shadow-2xl overflow-hidden font-mono text-slate-200">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-[#030712]">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                <h2 className="text-xs sm:text-sm font-bold tracking-wider text-slate-100">
+                  {locale === 'zh' ? '法規治理與出口管制合規聲明' : 'LEGAL, REGULATORY & EXPORT COMPLIANCE'}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="text-slate-400 hover:text-white text-base px-2 py-0.5 rounded transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
 
-            <h2 className="text-base sm:text-lg font-bold text-sky-400 mb-6 font-mono border-b border-slate-800 pb-2">
-              {locale === 'zh' ? '系統架構與合規聲明' : 'System Governance & Compliance Notice'}
-            </h2>
+            {/* Navigation Tabs */}
+            <div className="flex border-b border-slate-800 bg-slate-950/60 text-[11px] sm:text-xs overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setActiveTab('scope')}
+                className={`px-4 py-2.5 font-bold transition-colors whitespace-nowrap cursor-pointer border-b-2 ${
+                  activeTab === 'scope'
+                    ? 'border-sky-400 text-sky-400 bg-slate-900/60'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                01. {locale === 'zh' ? 'AI 法規排除' : 'AI-Act Scoping'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('export')}
+                className={`px-4 py-2.5 font-bold transition-colors whitespace-nowrap cursor-pointer border-b-2 ${
+                  activeTab === 'export'
+                    ? 'border-amber-400 text-amber-400 bg-slate-900/60'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                02. {locale === 'zh' ? '出口管制與雙用途' : 'Export & Dual-Use'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('privacy')}
+                className={`px-4 py-2.5 font-bold transition-colors whitespace-nowrap cursor-pointer border-b-2 ${
+                  activeTab === 'privacy'
+                    ? 'border-emerald-400 text-emerald-400 bg-slate-900/60'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                03. {locale === 'zh' ? '隱私與資安架構' : 'Privacy & InfoSec'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('disclaimer')}
+                className={`px-4 py-2.5 font-bold transition-colors whitespace-nowrap cursor-pointer border-b-2 ${
+                  activeTab === 'disclaimer'
+                    ? 'border-purple-400 text-purple-400 bg-slate-900/60'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                04. {locale === 'zh' ? '學術免責保證' : 'Warranty & Use'}
+              </button>
+            </div>
 
-            <div className="space-y-6 text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+            {/* Modal Body Content */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
               
-              {/* 1. 隱私與資料保護 (GDPR / PDPO / ISO 27701) */}
-              <section>
-                <h3 className="text-emerald-400 font-bold mb-1 font-mono">
-                  01. 零數據保留與隱私保護 (Zero Data Retention)
-                </h3>
-                <p className="mb-2">
-                  {locale === 'zh'
-                    ? '本系統落實「預設隱私（Privacy by Design）」。運作期間絕對不收集、不處理、不傳輸任何個人可識別資訊（PII）。使用者的瀏覽器本機儲存（Local Storage）僅用於記錄基礎介面偏好（語系與音效狀態）。'
-                    : 'This system operates strictly on a Privacy-by-Design principle. Zero Personally Identifiable Information (PII) is collected, processed, or transmitted. Browser local storage is utilized exclusively for saving non-identifiable UI preferences (locale and audio states).'}
-                </p>
-                <p className="text-[10px] text-slate-500 font-mono">
-                  * Compliance Alignment: HK PDPO, EU GDPR (Exempt from explicit consent due to purely technical necessity), ISO/IEC 27701.
-                </p>
-              </section>
+              {/* TAB 1: AI SCOPE */}
+              {activeTab === 'scope' && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-sky-950/30 border border-sky-800/50 rounded-lg">
+                    <h3 className="text-sky-300 font-bold font-mono text-xs mb-1">
+                      {locale === 'zh' ? '確定性線性代數 vs 人工智能系統' : 'Deterministic Linear Algebra vs. AI Systems'}
+                    </h3>
+                    <p className="text-xs text-slate-300">
+                      {locale === 'zh'
+                        ? 'J.A.R. QubitLab 係純粹由 JavaScript 矩陣代數運算驅動的微觀物理模擬器。系統運算完全依循確定性酉矩陣演化（Unitary Matrix Transformation），無任何機器學習（ML）、深度神經網絡、LLM 或自主適應推論演算法。'
+                        : 'J.A.R. QubitLab is a microscopic quantum mechanics simulator driven entirely by deterministic matrix algebra. It employs NO machine learning models, neural networks, LLMs, or autonomous inferencing algorithms.'}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-slate-100 font-bold mb-1 font-mono text-xs">
+                      {locale === 'zh' ? '明確不適用之監管架構 (Out of Regulatory Scope)：' : 'Explicit Out-of-Scope Frameworks:'}
+                    </h4>
+                    <ul className="list-disc pl-5 space-y-1 text-xs text-slate-400 font-mono">
+                      <li><strong>EU AI Act (Regulation 2024/1689):</strong> {locale === 'zh' ? '不符合第 3(1) 條 AI System 定義。' : 'Does not qualify as an "AI System" under Article 3(1).'}</li>
+                      <li><strong>ISO/IEC 42001 (AIMS):</strong> {locale === 'zh' ? '非 AI 產品，免除 AI 治理系統審計。' : 'Non-AI product; exempt from AIMS compliance.'}</li>
+                      <li><strong>國家網信辦《生成式人工智能服務管理暫行辦法》:</strong> {locale === 'zh' ? '不涉及生成式文本/影音生成，非監管標的。' : 'No synthetic content generation; not subject to Generative AI filings.'}</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
 
-              {/* 2. 非 AI 系統聲明 (EU AI Act / ISO 42001) */}
-              <section>
-                <h3 className="text-amber-400 font-bold mb-1 font-mono">
-                  02. 確定性物理引擎 (Deterministic Engine & AI-Exclusion)
-                </h3>
-                <p className="mb-2">
-                  {locale === 'zh'
-                    ? '為免疑義，本微觀量子模擬器屬於「確定性數學與物理運算系統」，完全由前端 JavaScript 矩陣代數驅動。本項目不包含任何機器學習模型、神經網路或生成式人工智能（Generative AI），因此不受任何 AI 特定監管框架限制。'
-                    : 'For the avoidance of doubt, this quantum simulator is a deterministic mathematical physics engine powered entirely by client-side matrix algebra. It does NOT incorporate machine learning models, neural networks, or Generative AI. Consequently, AI-specific regulatory frameworks do not apply.'}
-                </p>
-                <p className="text-[10px] text-slate-500 font-mono">
-                  * Out of Scope: EU AI Act, ISO/IEC 42001, CAC Generative AI Measures.
-                </p>
-              </section>
+              {/* TAB 2: EXPORT CONTROL & DUAL-USE */}
+              {activeTab === 'export' && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-amber-950/30 border border-amber-800/50 rounded-lg">
+                    <h3 className="text-amber-300 font-bold font-mono text-xs mb-1">
+                      {locale === 'zh' ? '公開基礎科學與法定安全港豁免' : 'Fundamental Public Science & Safe Harbor Defense'}
+                    </h3>
+                    <p className="text-xs text-slate-300">
+                      {locale === 'zh'
+                        ? '儘管先進量子計算與量子通訊受國際《瓦聖那協定》及各國出口管制關注，本專案僅模擬大學本科教材之公開物理學原理（Hadamard 疊加、馬赫-曾德爾相位干涉）。完全符合公開科學軟體之安全港標準。'
+                        : 'While quantum computing can be subject to dual-use controls under the Wassenaar Arrangement and national export regimes, this project merely simulates fundamental textbook physics (Hadamard superposition, Mach-Zehnder interferometry), protected by public science safe harbors.'}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-slate-100 font-bold mb-1 font-mono text-xs">
+                      {locale === 'zh' ? '出口管制排除證明 (Export Control Exemptions)：' : 'Export Control Exclusions:'}
+                    </h4>
+                    <ul className="list-disc pl-5 space-y-1 text-xs text-slate-400 font-mono">
+                      <li><strong>US EAR 15 CFR § 734.7 & § 734.8:</strong> {locale === 'zh' ? '公開發布之教育軟體與基礎科研免除 EAR 審查。' : 'Publicly available educational software is exempt from EAR jurisdiction.'}</li>
+                      <li><strong>中國《兩用物項出口管制條例》:</strong> {locale === 'zh' ? '無管制清單之軍民兩用硬體接口，純科普展示。' : 'Zero dual-use military hardware control logic.'}</li>
+                      <li><strong>軍事與密碼學排除:</strong> {locale === 'zh' ? '不包含低溫稀釋製冷控制、容錯量子糾錯 (QEC) 及 Shor 密鑰破解演算法。' : 'Zero cryogenic drivers, zero QEC hardware controls, and zero Shor cryptanalysis routines.'}</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
 
-              {/* 3. 資訊安全 (ISO 27001) */}
-              <section>
-                <h3 className="text-purple-400 font-bold mb-1 font-mono">
-                  03. 客戶端邊緣運算安全 (Client-Side InfoSec)
-                </h3>
-                <p className="mb-2">
-                  {locale === 'zh'
-                    ? '本系統採用 100% 無伺服器（Serverless）與記憶體內（In-Memory）運算架構。所有程式碼與量子演化計算均於使用者的終端設備上封閉執行，並受到嚴格的內容安全策略（CSP）保護，從根本上消除伺服器端資料外洩風險。'
-                    : 'The architecture is 100% serverless and executes entirely in-memory within the client device. Protected by a strict Content Security Policy (CSP), the absence of backend data processing fundamentally eliminates server-side data breach vectors.'}
-                </p>
-                <p className="text-[10px] text-slate-500 font-mono">
-                  * Security Posture: Aligned with ISO/IEC 27001 principles via architectural immunity.
-                </p>
-              </section>
+              {/* TAB 3: PRIVACY & INFOSEC */}
+              {activeTab === 'privacy' && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-emerald-950/30 border border-emerald-800/50 rounded-lg">
+                    <h3 className="text-emerald-300 font-bold font-mono text-xs mb-1">
+                      {locale === 'zh' ? '零數據留存架構 (Zero Data Retention Architecture)' : 'Privacy-by-Design & Zero Retention'}
+                    </h3>
+                    <p className="text-xs text-slate-300">
+                      {locale === 'zh'
+                        ? '本系統落實架構性隱私保護。無後端伺服器、無使用者個人識別資訊（PII）收集、無遠端遙測追蹤。本機 localStorage 僅用以儲存技術性偏好（語系、靜音），合規免除 Cookie 同意橫幅。'
+                        : 'Engineered with zero telemetry, zero trackers, and zero backend databases. No Personally Identifiable Information (PII) is processed. Local storage is strictly used for functional UI states (locale, mute toggle).'}
+                    </p>
+                  </div>
+                  <div className="space-y-2 text-xs text-slate-400 font-mono">
+                    <p>• <strong>HK Cap. 486 (PDPO) & EU GDPR:</strong> {locale === 'zh' ? '無涉及個人資料，完全符合豁免標準。' : 'Completely exempt from PII regulations via absolute anonymity.'}</p>
+                    <p>• <strong>ISO/IEC 27001 InfoSec:</strong> {locale === 'zh' ? '全記憶體封閉運算，搭配嚴格 Content Security Policy (CSP)，從源頭杜絕伺服器資料外洩。' : '100% in-memory client execution protected by strict CSP, eliminating server breach vectors.'}</p>
+                  </div>
+                </div>
+              )}
 
-              {/* 4. 免責聲明 */}
-              <section>
-                <h3 className="text-slate-200 font-bold mb-1 font-mono">
-                  04. 聲明與用途 (Disclaimer)
-                </h3>
-                <p>
-                  {locale === 'zh'
-                    ? '本項目（J.A.R. QubitLab）為開放原始碼之學術與教育實驗產品。使用者應理解，這是一個視覺化的量子運算沙盒，不構成任何商業級加密或工業級量子測量之依據。'
-                    : 'This project (J.A.R. QubitLab) is an open-source educational experiment. Users acknowledge this is a visual quantum sandbox and does not constitute a basis for commercial cryptography or industrial quantum measurement.'}
-                </p>
-              </section>
+              {/* TAB 4: DISCLAIMER */}
+              {activeTab === 'disclaimer' && (
+                <div className="space-y-3">
+                  <div className="p-3 bg-purple-950/30 border border-purple-800/50 rounded-lg">
+                    <h3 className="text-purple-300 font-bold font-mono text-xs mb-1">
+                      {locale === 'zh' ? '學術與非商業免責聲明' : 'Academic & Non-Commercial Disclaimer'}
+                    </h3>
+                    <p className="text-xs text-slate-300">
+                      {locale === 'zh'
+                        ? '本模擬器為開源教育沙盒，按「現狀（AS IS）」提供。本軟體運算結果不得作為航太工業、核子工程、軍工加密或高精密實驗室之實體測量基準。'
+                        : 'Provided strictly "AS IS" for pedagogical and visual experimentation. Not calibrated for aerospace engineering, military cryptography, or operational quantum hardware baselines.'}
+                    </p>
+                  </div>
+                  <div className="text-[11px] text-slate-400 space-y-1 font-mono">
+                    <p>• <strong>Creator:</strong> 羅子淇 Jacky Law (Joint Applied Research)</p>
+                    <p>• <strong>Code Repository:</strong> Open-source on GitHub Pages (Client-side execution only)</p>
+                    <p>• <strong>Security Verification:</strong> Automated CI Integrity Check via Vitest & SHA-256 Verified Assets</p>
+                  </div>
+                </div>
+              )}
 
             </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800 bg-[#030712] text-[11px]">
+              <span className="text-slate-500 font-mono">
+                ISO 27001 / EAR § 734.7 / GDPR EXEMPT ALIGNED
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="px-3.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-bold transition-all border border-slate-600 cursor-pointer"
+              >
+                {locale === 'zh' ? '關閉聲明' : 'Close Notice'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
