@@ -6,16 +6,15 @@
 import { Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
-import * as THREE from 'three';
+// 🌟 移除 THREE import 與 QuantumField
 import { BoothOne } from './components/BoothOne';
 import { BoothTwo } from './components/BoothTwo';
-import { QuantumField } from './components/QuantumField';
 import { LanguageToggle } from './components/LanguageToggle';
 import { ConsoleBoothOne } from './components/console/ConsoleBoothOne';
 import { ConsoleBoothTwo } from './components/console/ConsoleBoothTwo';
 import { useAnimationLock } from './hooks/useAnimationLock';
 import { useLocaleStore } from './store/localeStore';
-import { useQuantumStore } from './store/quantumStore'; // 🌟 引入 Store
+import { useQuantumStore } from './store/quantumStore';
 import { sound } from './audio/soundEngine';
 
 function BoothFallback() {
@@ -38,11 +37,9 @@ export default function App() {
   const [isExplaining, setIsExplaining] = useState(false);
   const { locale } = useLocaleStore();
 
-  // 🌟 上提 Reset 職責：由路由控制器統一管理實體機器的歸零
   const resetBoothOne = useQuantumStore((s) => s.resetBoothOne);
   const resetBoothTwo = useQuantumStore((s) => s.resetBoothTwo);
 
-  // 初始化防護：App 載入時強制清空物理引擎狀態
   useEffect(() => {
     resetBoothOne();
   }, [resetBoothOne]);
@@ -56,7 +53,6 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', unlockAudio);
   }, []);
 
-  // 🌟 乾淨的切換路由：先重置物理狀態，再切換 UI，確保子組件 Mount 時拿到的 p0/p1 是純淨的 |00⟩
   const handleSwitchBooth = (booth: 'one' | 'two') => {
     if (booth === 'one') {
       resetBoothOne();
@@ -96,14 +92,14 @@ export default function App() {
           </div>
         </header>
 
+        {/* 🌟 移除 ACESFilmicToneMapping 以保留 emissive 的原生高亮發光感 */}
         <Canvas 
           camera={{ position: [0, 4.5, 9.5], fov: 46 }}
           dpr={[1, 2]}
           frameloop={isAnimating ? 'always' : 'demand'}
-          gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+          gl={{ antialias: true }} 
         >
           <color attach="background" args={['#030712']} />
-          <QuantumField count={450} />
           
           <ambientLight intensity={0.85} />
           <directionalLight position={[5, 10, 5]} intensity={1.3} />
@@ -119,7 +115,8 @@ export default function App() {
           />
 
           <Suspense fallback={<BoothFallback />}>
-            {activeBooth === 'one' ? <BoothOne pureVisual key="booth-one" /> : <BoothTwo pureVisual key="booth-two" />}
+            {/* 🌟 移除冗餘的 key prop */}
+            {activeBooth === 'one' ? <BoothOne pureVisual /> : <BoothTwo pureVisual />}
           </Suspense>
         </Canvas>
 
@@ -130,9 +127,9 @@ export default function App() {
 
       <footer className="w-full bg-slate-900/95 border-t border-slate-800/80 p-3 sm:p-4 z-20 backdrop-blur-md flex flex-col justify-between shrink-0 h-[240px] sm:h-[260px] pb-safe">
         {activeBooth === 'one' ? (
-          <ConsoleBoothOne isExplaining={isExplaining} setIsExplaining={setIsExplaining} key="console-one" />
+          <ConsoleBoothOne isExplaining={isExplaining} setIsExplaining={setIsExplaining} />
         ) : (
-          <ConsoleBoothTwo isExplaining={isExplaining} setIsExplaining={setIsExplaining} key="console-two" />
+          <ConsoleBoothTwo isExplaining={isExplaining} setIsExplaining={setIsExplaining} />
         )}
       </footer>
     </div>
