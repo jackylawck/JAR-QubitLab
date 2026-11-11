@@ -5,16 +5,19 @@
  */
 import { Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Html } from '@react-three/drei';
+import { OrbitControls, Html, PerspectiveCamera } from '@react-three/drei';
 import { BoothOne } from './components/BoothOne';
 import { BoothTwo } from './components/BoothTwo';
+import { BoothThree } from './components/BoothThree'; // 🌟 匯入展台 3
 import { LanguageToggle } from './components/LanguageToggle';
-import { GovernanceNotice } from './components/GovernanceNotice'; // 🌟 1. 引入合規聲明組件
+import { GovernanceNotice } from './components/GovernanceNotice';
 import { ConsoleBoothOne } from './components/console/ConsoleBoothOne';
 import { ConsoleBoothTwo } from './components/console/ConsoleBoothTwo';
+import { ConsoleBoothThree } from './components/console/ConsoleBoothThree'; // 🌟 匯入展台 3 控制台
 import { useAnimationLock } from './hooks/useAnimationLock';
 import { useLocaleStore } from './store/localeStore';
 import { useQuantumStore } from './store/quantumStore';
+import { useTensorStore } from './store/tensorStore'; // 🌟 匯入展台 3 狀態庫
 import { sound } from './audio/soundEngine';
 
 function BoothFallback() {
@@ -33,18 +36,19 @@ function BoothFallback() {
 
 export default function App() {
   const { isAnimating } = useAnimationLock();
-  const [activeBooth, setActiveBooth] = useState<'one' | 'two'>('one');
+  // 🌟 擴展 activeBooth 支援展台 3
+  const [activeBooth, setActiveBooth] = useState<'one' | 'two' | 'three'>('one');
   const [isExplaining, setIsExplaining] = useState(false);
   const { locale } = useLocaleStore();
 
   const resetBoothOne = useQuantumStore((s) => s.resetBoothOne);
   const resetBoothTwo = useQuantumStore((s) => s.resetBoothTwo);
+  const resetTensor = useTensorStore((s) => s.reset); // 🌟 取得展台 3 的 reset
 
   useEffect(() => {
     resetBoothOne();
   }, [resetBoothOne]);
 
-  // 🌟 2. 雙重手勢監聽，確保 iOS Safari 100% 順利喚醒 Web Audio
   useEffect(() => {
     const unlockAudio = () => {
       sound.unlock();
@@ -59,16 +63,18 @@ export default function App() {
     };
   }, []);
 
-  const handleSwitchBooth = (booth: 'one' | 'two') => {
+  const handleSwitchBooth = (booth: 'one' | 'two' | 'three') => {
     if (booth === activeBooth) return;
 
-    // 🌟 3. 切換展台時同步收起原理解析面板，維持乾淨的控制介面
     setIsExplaining(false);
 
+    // 🌟 根據選擇的展台重置對應狀態
     if (booth === 'one') {
       resetBoothOne();
-    } else {
+    } else if (booth === 'two') {
       resetBoothTwo();
+    } else {
+      resetTensor();
     }
     setActiveBooth(booth);
   };
@@ -100,15 +106,29 @@ export default function App() {
             >
               {locale === 'zh' ? '展台 2' : 'Booth 2'}
             </button>
+            {/* 🌟 加入展台 3 切換按鈕 */}
+            <button 
+              onClick={() => handleSwitchBooth('three')} 
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
+                activeBooth === 'three' ? 'bg-purple-600 text-white ring-1 ring-purple-400' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              }`}
+            >
+              {locale === 'zh' ? '展台 3' : 'Booth 3'}
+            </button>
           </div>
         </header>
 
         <Canvas 
-          camera={{ position: [0, 4.5, 9.5], fov: 46 }}
           dpr={[1, 2]}
           frameloop={isAnimating ? 'always' : 'demand'}
           gl={{ antialias: true }} 
         >
+          {/* 🌟 動態相機配置：展台 3 需要更高的俯角來俯視 2x2 矩陣 */}
+          <PerspectiveCamera 
+            makeDefault 
+            position={activeBooth === 'three' ? [0, 8, 11] : [0, 4.5, 9.5]} 
+            fov={activeBooth === 'three' ? 42 : 46} 
+          />
           <color attach="background" args={['#030712']} />
           
           <ambientLight intensity={0.85} />
@@ -125,7 +145,10 @@ export default function App() {
           />
 
           <Suspense fallback={<BoothFallback />}>
-            {activeBooth === 'one' ? <BoothOne pureVisual /> : <BoothTwo pureVisual />}
+            {/* 🌟 根據 activeBooth 條件渲染對應展台 */}
+            {activeBooth === 'one' && <BoothOne pureVisual />}
+            {activeBooth === 'two' && <BoothTwo pureVisual />}
+            {activeBooth === 'three' && <BoothThree />}
           </Suspense>
         </Canvas>
 
@@ -135,14 +158,12 @@ export default function App() {
       </div>
 
       <footer className="w-full bg-slate-900/95 border-t border-slate-800/80 p-3 sm:p-4 z-20 backdrop-blur-md flex flex-col justify-between shrink-0 h-[240px] sm:h-[260px] pb-safe">
-        {activeBooth === 'one' ? (
-          <ConsoleBoothOne isExplaining={isExplaining} setIsExplaining={setIsExplaining} />
-        ) : (
-          <ConsoleBoothTwo isExplaining={isExplaining} setIsExplaining={setIsExplaining} />
-        )}
+        {/* 🌟 根據 activeBooth 條件渲染對應控制台 */}
+        {activeBooth === 'one' && <ConsoleBoothOne isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
+        {activeBooth === 'two' && <ConsoleBoothTwo isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
+        {activeBooth === 'three' && <ConsoleBoothThree isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
       </footer>
 
-      {/* 🌟 4. 掛載合規治理聲明彈窗按鈕 */}
       <GovernanceNotice />
     </div>
   );
