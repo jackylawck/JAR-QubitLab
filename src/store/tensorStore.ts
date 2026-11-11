@@ -2,6 +2,9 @@
 import { create } from 'zustand';
 import { TensorEngine, GATES, TensorAmplitude } from '../quantum/tensorEngine';
 
+// 🌟 新增：全域 ID 計數器，用於攔截與取消異步抽樣迴圈
+let sampleIdCounter = 0; 
+
 interface TensorState {
   engine: TensorEngine;
   amplitudes: TensorAmplitude[];
@@ -48,13 +51,19 @@ export const useTensorStore = create<TensorState>((set, get) => ({
     const { engine, isSampling } = get();
     if (isSampling) return;
     
+    // 🌟 修正 1：鎖定當前抽樣任務的 ID
+    const currentSampleId = ++sampleIdCounter; 
     set({ isSampling: true, sampleHistory: [] });
     
-    // 儲存坍縮前的波函數狀態，以便抽樣後恢復
+    // 🌟 修正 2：不只要備份 state，還必須備份鎖相基準 refIdx
     const originalState = new Float64Array(engine.state);
+    const originalRefIdx = engine.refIdx;
     
     const history: number[] = [];
     for (let i = 0; i < 20; i++) {
+      // 🌟 修正 3：每次迭代檢查任務是否已被中斷
+      if (currentSampleId !== sampleIdCounter) return;
+      
       // 每次抽樣前恢復波函數
       engine.state.set(originalState); 
       const result = engine.collapse();
@@ -65,12 +74,18 @@ export const useTensorStore = create<TensorState>((set, get) => ({
       await new Promise(resolve => setTimeout(resolve, 150));
     }
     
-    // 抽樣結束，恢復為原始波函數疊加態供玩家繼續觀察
+    // 迴圈結束後，最後確認是否被取消
+    if (currentSampleId !== sampleIdCounter) return;
+    
+    // 🌟 修正 4：抽樣結束，完整恢復波函數與基準相位，防止下次運算鎖相漂移
     engine.state.set(originalState);
+    engine.refIdx = originalRefIdx;
     set({ amplitudes: engine.getAmplitudes(), isSampling: false });
   },
 
   reset: () => {
+    // 🌟 修正 5：改變計數器，立即「剪斷」任何正在執行的 sample20x 迴圈
+    sampleIdCounter++; 
     const { engine } = get();
     engine.reset();
     set({
