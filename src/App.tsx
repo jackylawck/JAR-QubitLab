@@ -6,7 +6,6 @@
 import { Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
-// 🌟 移除 THREE import 與 QuantumField
 import { BoothOne } from './components/BoothOne';
 import { BoothTwo } from './components/BoothTwo';
 import { LanguageToggle } from './components/LanguageToggle';
@@ -54,6 +53,9 @@ export default function App() {
   }, []);
 
   const handleSwitchBooth = (booth: 'one' | 'two') => {
+    // 🌟 補回防呆：阻擋同展台重複點擊，徹底消滅無意義的重置與假坍縮
+    if (booth === activeBooth) return;
+
     if (booth === 'one') {
       resetBoothOne();
     } else {
@@ -92,7 +94,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* 🌟 移除 ACESFilmicToneMapping 以保留 emissive 的原生高亮發光感 */}
         <Canvas 
           camera={{ position: [0, 4.5, 9.5], fov: 46 }}
           dpr={[1, 2]}
@@ -115,7 +116,6 @@ export default function App() {
           />
 
           <Suspense fallback={<BoothFallback />}>
-            {/* 🌟 移除冗餘的 key prop */}
             {activeBooth === 'one' ? <BoothOne pureVisual /> : <BoothTwo pureVisual />}
           </Suspense>
         </Canvas>
