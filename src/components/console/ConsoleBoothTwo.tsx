@@ -3,6 +3,7 @@
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
  */
+import { useEffect, useRef } from 'react';
 import { useQuantumStore } from '../../store/quantumStore';
 import { useLocaleStore } from '../../store/localeStore';
 import { sound } from '../../audio/soundEngine';
@@ -17,36 +18,79 @@ export function ConsoleBoothTwo({
 }) {
   const t = useLocaleStore((state) => state.t);
   const locale = useLocaleStore((state) => state.locale);
-  const { isSplit, phaseAngle, splitBoothTwo, setPhaseAngle, collideBoothTwo } = useQuantumStore();
+  
+  // 🌟 Selector 優化
+  const isSplit = useQuantumStore((s) => s.isSplit);
+  const phaseAngle = useQuantumStore((s) => s.phaseAngle);
+  const splitBoothTwo = useQuantumStore((s) => s.splitBoothTwo);
+  const setPhaseAngle = useQuantumStore((s) => s.setPhaseAngle);
+  const collideBoothTwo = useQuantumStore((s) => s.collideBoothTwo);
+
+  const timerRef = useRef<number | null>(null);
+  const lockReleaseRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      lockReleaseRef.current?.();
+      lockReleaseRef.current = null;
+    };
+  }, []);
 
   const handleSplit = () => {
     if (isSplit) return;
     sound.playLever();
     splitBoothTwo();
-    const release = acquireAnimationLock(500);
-    setTimeout(release, 450);
+
+    lockReleaseRef.current?.();
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+
+    lockReleaseRef.current = acquireAnimationLock();
+    timerRef.current = window.setTimeout(() => {
+      lockReleaseRef.current?.();
+      lockReleaseRef.current = null;
+      timerRef.current = null;
+    }, 450);
   };
 
-  const handlePhaseStep = (targetAngle: number) => {
-    sound.playTick(1.2);
+  const handlePhaseStep = (targetAngle: number, stepIndex: number) => {
+    sound.playTick(stepIndex);
     setPhaseAngle(targetAngle);
-    const release = acquireAnimationLock(200);
-    setTimeout(release, 100);
+
+    lockReleaseRef.current?.();
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+
+    lockReleaseRef.current = acquireAnimationLock();
+    timerRef.current = window.setTimeout(() => {
+      lockReleaseRef.current?.();
+      lockReleaseRef.current = null;
+      timerRef.current = null;
+    }, 100);
   };
 
   const handleCollide = () => {
     if (!isSplit) return;
     sound.playEvaporate();
     collideBoothTwo();
-    const release = acquireAnimationLock(700);
-    setTimeout(release, 600);
+
+    lockReleaseRef.current?.();
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+
+    lockReleaseRef.current = acquireAnimationLock();
+    timerRef.current = window.setTimeout(() => {
+      lockReleaseRef.current?.();
+      lockReleaseRef.current = null;
+      timerRef.current = null;
+    }, 600);
   };
 
   const deg = Math.round((phaseAngle * 180) / Math.PI);
 
   return (
     <div className="flex flex-col h-full justify-between">
-      {/* 儀表狀態列 */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-2">
         <div className="flex items-center gap-2 font-mono text-xs">
           <span className="text-slate-400">PHASE:</span>
@@ -65,7 +109,6 @@ export function ConsoleBoothTwo({
 
       {!isExplaining ? (
         <div className="grid grid-cols-3 gap-2 py-2 items-center">
-          {/* ① 分光 */}
           <button
             type="button"
             onClick={handleSplit}
@@ -80,14 +123,13 @@ export function ConsoleBoothTwo({
             <span className="text-xs font-bold mt-1">① {t.common.splitBeam}</span>
           </button>
 
-          {/* ② 快速相位卡榫選擇器 */}
           <div className="flex flex-col items-center justify-center p-1.5 rounded-xl bg-slate-950/60 border border-slate-800">
             <span className="text-[10px] text-slate-400 mb-1">② 相位控制</span>
             <div className="flex gap-1 w-full justify-center">
               <button
                 type="button"
                 disabled={!isSplit}
-                onClick={() => handlePhaseStep(0)}
+                onClick={() => handlePhaseStep(0, 0)}
                 className={`flex-1 py-1 text-[11px] font-mono rounded font-bold transition-colors ${
                   deg === 0 ? 'bg-sky-500 text-white' : 'bg-slate-800 text-slate-400'
                 } ${!isSplit ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
@@ -97,7 +139,7 @@ export function ConsoleBoothTwo({
               <button
                 type="button"
                 disabled={!isSplit}
-                onClick={() => handlePhaseStep(Math.PI / 2)}
+                onClick={() => handlePhaseStep(Math.PI / 2, 1)}
                 className={`flex-1 py-1 text-[11px] font-mono rounded font-bold transition-colors ${
                   deg === 90 ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'
                 } ${!isSplit ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
@@ -107,7 +149,7 @@ export function ConsoleBoothTwo({
               <button
                 type="button"
                 disabled={!isSplit}
-                onClick={() => handlePhaseStep(Math.PI)}
+                onClick={() => handlePhaseStep(Math.PI, 2)}
                 className={`flex-1 py-1 text-[11px] font-mono rounded font-bold transition-colors ${
                   deg === 180 ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-400'
                 } ${!isSplit ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
@@ -117,7 +159,6 @@ export function ConsoleBoothTwo({
             </div>
           </div>
 
-          {/* ③ 對撞干涉 */}
           <button
             type="button"
             onClick={handleCollide}
@@ -134,15 +175,7 @@ export function ConsoleBoothTwo({
         </div>
       ) : (
         <div className="text-xs text-slate-300 leading-relaxed overflow-y-auto max-h-[140px] py-1">
-          {locale === 'zh' ? (
-            <p>
-              若為 0° 同相，對撞後右路消亡，能量 100% 匯聚至 Path A；若翻轉為 π（180°）反相，左路相消蒸發，機率 100% 被搬運至 Path B！
-            </p>
-          ) : (
-            <p>
-              In-phase (0°): Destructive interference eliminates Path B, 100% amplitude stays in Path A. Anti-phase (π): Path A cancels out and 100% amplitude is transported into Path B!
-            </p>
-          )}
+          <p>{t.boothTwo.explanation}</p>
         </div>
       )}
 
