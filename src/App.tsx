@@ -15,6 +15,7 @@ import { ConsoleBoothOne } from './components/console/ConsoleBoothOne';
 import { ConsoleBoothTwo } from './components/console/ConsoleBoothTwo';
 import { useAnimationLock } from './hooks/useAnimationLock';
 import { useLocaleStore } from './store/localeStore';
+import { useQuantumStore } from './store/quantumStore'; // 🌟 引入 Store
 import { sound } from './audio/soundEngine';
 
 function BoothFallback() {
@@ -37,6 +38,15 @@ export default function App() {
   const [isExplaining, setIsExplaining] = useState(false);
   const { locale } = useLocaleStore();
 
+  // 🌟 上提 Reset 職責：由路由控制器統一管理實體機器的歸零
+  const resetBoothOne = useQuantumStore((s) => s.resetBoothOne);
+  const resetBoothTwo = useQuantumStore((s) => s.resetBoothTwo);
+
+  // 初始化防護：App 載入時強制清空物理引擎狀態
+  useEffect(() => {
+    resetBoothOne();
+  }, [resetBoothOne]);
+
   useEffect(() => {
     const unlockAudio = () => {
       sound.unlock();
@@ -46,13 +56,19 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', unlockAudio);
   }, []);
 
+  // 🌟 乾淨的切換路由：先重置物理狀態，再切換 UI，確保子組件 Mount 時拿到的 p0/p1 是純淨的 |00⟩
+  const handleSwitchBooth = (booth: 'one' | 'two') => {
+    if (booth === 'one') {
+      resetBoothOne();
+    } else {
+      resetBoothTwo();
+    }
+    setActiveBooth(booth);
+  };
+
   return (
     <div className="w-full h-[100dvh] bg-gray-950 text-gray-100 flex flex-col overflow-hidden select-none touch-none">
-      
-      {/* 🌟 區域一：上半部 3D 微觀量子觀測室 */}
       <div className="relative w-full flex-1 min-h-0 bg-[#030712]">
-        
-        {/* 頂部標題與語系切換 */}
         <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 py-2.5 sm:px-6 pointer-events-none">
           <div className="pointer-events-auto">
             <h1 className="text-sm sm:text-lg font-black tracking-tight text-white drop-shadow">
@@ -62,16 +78,16 @@ export default function App() {
           <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
             <LanguageToggle />
             <button 
-              onClick={() => setActiveBooth('one')} 
-              className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 ${
+              onClick={() => handleSwitchBooth('one')} 
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
                 activeBooth === 'one' ? 'bg-blue-600 text-white ring-1 ring-blue-400' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
             >
               {locale === 'zh' ? '展台 1' : 'Booth 1'}
             </button>
             <button 
-              onClick={() => setActiveBooth('two')} 
-              className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 ${
+              onClick={() => handleSwitchBooth('two')} 
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
                 activeBooth === 'two' ? 'bg-cyan-600 text-white ring-1 ring-cyan-400' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
             >
@@ -80,7 +96,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* 3D 畫布：無任何操作按鈕阻擋，360 度隨意旋轉 */}
         <Canvas 
           camera={{ position: [0, 4.5, 9.5], fov: 46 }}
           dpr={[1, 2]}
@@ -104,26 +119,22 @@ export default function App() {
           />
 
           <Suspense fallback={<BoothFallback />}>
-            {/* 🌟 啟用 pureVisual 模式，隱藏 3D 內的拉桿與按鈕 */}
-            {activeBooth === 'one' ? <BoothOne pureVisual /> : <BoothTwo pureVisual />}
+            {activeBooth === 'one' ? <BoothOne pureVisual key="booth-one" /> : <BoothTwo pureVisual key="booth-two" />}
           </Suspense>
         </Canvas>
 
-        {/* 觀測室底部引導提示 */}
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-none text-[10px] text-slate-500 tracking-wider bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm border border-white/5">
           {locale === 'zh' ? '⟲ 拖曳星空旋轉視角 ⟳' : '⟲ Drag to orbit view ⟳'}
         </div>
       </div>
 
-      {/* 🌟 區域二：下半部 實體控制台 (固定高度) */}
       <footer className="w-full bg-slate-900/95 border-t border-slate-800/80 p-3 sm:p-4 z-20 backdrop-blur-md flex flex-col justify-between shrink-0 h-[240px] sm:h-[260px] pb-safe">
         {activeBooth === 'one' ? (
-          <ConsoleBoothOne isExplaining={isExplaining} setIsExplaining={setIsExplaining} />
+          <ConsoleBoothOne isExplaining={isExplaining} setIsExplaining={setIsExplaining} key="console-one" />
         ) : (
-          <ConsoleBoothTwo isExplaining={isExplaining} setIsExplaining={setIsExplaining} />
+          <ConsoleBoothTwo isExplaining={isExplaining} setIsExplaining={setIsExplaining} key="console-two" />
         )}
       </footer>
-
     </div>
   );
 }
