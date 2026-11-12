@@ -11,8 +11,7 @@ interface LocaleState {
   toggleLocale: () => void;
 }
 
-// 🌟 優化 1：DRY (Don't Repeat Yourself) - 抽離 I/O 寫入與防護邏輯
-// 消滅 setLocale 與 toggleLocale 中重複的 try-catch boilerplate
+// DRY: 抽離 I/O 寫入與靜默失敗防護
 const saveLocale = (locale: Locale) => {
   if (typeof window === 'undefined') return;
   try {
@@ -28,9 +27,12 @@ const getInitialLocale = (): Locale => {
     const saved = localStorage.getItem(LOCALE_KEY) as Locale | null;
     if (saved === 'zh' || saved === 'en') return saved;
     
-    // 🌟 優化 2：智慧回退 (Smart Fallback) - 提升初次訪問 UX
-    // 若 localStorage 無紀錄，則根據使用者的系統/瀏覽器偏好設定給予預設語系
-    if (navigator.language.toLowerCase().startsWith('en')) return 'en';
+    // 🌟 優化 1：智慧回退升級 (Smart Fallback)
+    // 現代瀏覽器支援 navigator.languages 陣列，能更精準反映使用者的多語系優先級
+    const userLangs = navigator.languages || [navigator.language || ''];
+    const pref = userLangs.find(lang => lang.toLowerCase().startsWith('en') || lang.toLowerCase().startsWith('zh'));
+    
+    if (pref && pref.toLowerCase().startsWith('en')) return 'en';
   } catch (e) {
     console.warn('[JAR-QubitLab] localStorage access denied in privacy mode.');
   }
@@ -39,20 +41,35 @@ const getInitialLocale = (): Locale => {
 
 const initialLocale = getInitialLocale();
 
-export const useLocaleStore = create<LocaleState>((set) => ({
-  locale: initialLocale,
-  t: translations[initialLocale],
-
-  setLocale: (locale) => {
-    saveLocale(locale);
-    set({ locale, t: translations[locale] });
-  },
-
-  toggleLocale: () => {
-    set((state) => {
-      const next: Locale = state.locale === 'zh' ? 'en' : 'zh';
-      saveLocale(next);
-      return { locale: next, t: translations[next] };
+export const useLocaleStore = create<LocaleState>((set) => {
+  // 🌟 優化 2：跨分頁狀態同步 (Cross-Tab Synchronization)
+  // 企業級 PWA 標配：當使用者在 Tab A 切換語系時，Tab B 會瞬間無縫更新，無需重新整理
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+      if (e.key === LOCALE_KEY && (e.newValue === 'zh' || e.newValue === 'en')) {
+        set({ 
+          locale: e.newValue as Locale, 
+          t: translations[e.newValue as Locale] 
+        });
+      }
     });
-  },
-}));
+  }
+
+  return {
+    locale: initialLocale,
+    t: translations[initialLocale],
+
+    setLocale: (locale) => {
+      saveLocale(locale);
+      set({ locale, t: translations[locale] });
+    },
+
+    toggleLocale: () => {
+      set((state) => {
+        const next: Locale = state.locale === 'zh' ? 'en' : 'zh';
+        saveLocale(next);
+        return { locale: next, t: translations[next] };
+      });
+    },
+  };
+});
