@@ -9,7 +9,7 @@ interface InterferenceBurstProps {
   onComplete: () => void;
 }
 
-// 🌟 優化 1：全域零延遲生成「柔光圓形粒子」材質，徹底告別預設的粗糙方形點
+// 🌟 全域零延遲生成「柔光圓形粒子」材質
 const PARTICLE_TEXTURE = (() => {
   if (typeof document === 'undefined') return null;
   const canvas = document.createElement('canvas');
@@ -51,7 +51,6 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
       const phi = Math.acos(2 * Math.random() - 1);
       
       if (isEvaporate) {
-        // Evaporate: 從微小球體表面散開
         const r = 0.1 + Math.random() * 0.2;
         initPos[idx] = Math.sin(phi) * Math.cos(theta) * r;
         initPos[idx + 1] = Math.sin(phi) * Math.sin(theta) * r;
@@ -59,10 +58,9 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
 
         const speed = 1.5 + Math.random() * 2;
         vel[idx] = Math.sin(phi) * Math.cos(theta) * speed;
-        vel[idx + 1] = Math.abs(Math.sin(phi) * Math.sin(theta) * speed) + 1.2; // 初始向上速度
+        vel[idx + 1] = Math.abs(Math.sin(phi) * Math.sin(theta) * speed) + 1.2; 
         vel[idx + 2] = Math.cos(phi) * speed;
       } else {
-        // Merge: 從大半徑外圍生成，準備向內坍縮
         const r = 0.8 + Math.random() * 0.6;
         initPos[idx] = Math.sin(phi) * Math.cos(theta) * r;
         initPos[idx + 1] = Math.sin(phi) * Math.sin(theta) * r;
@@ -77,7 +75,6 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
     return { initPos, vel, colors: col };
   }, [type]);
 
-  // 複製一份 Float32Array 供每幀原地修改 (Zero-GC)
   const activePositions = useMemo(() => {
     return data ? new Float32Array(data.initPos) : null;
   }, [data]);
@@ -90,7 +87,6 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
   useFrame((_, delta) => {
     if (!type || !pointsRef.current || !data || completedRef.current) return;
 
-    // 🌟 效能防護：防止切換網頁或休眠導致 delta 飆高，產生破圖
     const safeDelta = Math.min(delta, 0.1); 
     progressRef.current += safeDelta * 2.2;
     const progress = Math.min(progressRef.current, 1.0);
@@ -104,29 +100,36 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
     const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
     const array = posAttr.array as Float32Array;
 
-    // 🌟 優化 2：決定性物理學 (Deterministic Physics)
-    // 徹底拋棄傳統 Euler += velocity 累加，改用 progress 絕對插值，杜絕掉幀誤差
+    // 🌟 核心修復：陣列越界防護 (Defensive Array Access)
+    // 透過明確取出陣列元素並提供 fallback (0)，來消除 TS2532 (可能為 undefined) 的警告
     for (let i = 0; i < count; i++) {
       const idx = i * 3;
+      
+      // 取出靜態起始座標與速度，確保非 undefined
+      const initX = data.initPos[idx] ?? 0;
+      const initY = data.initPos[idx + 1] ?? 0;
+      const initZ = data.initPos[idx + 2] ?? 0;
+
       if (type === 'evaporate') {
         const t = progress * 1.5;
-        array[idx] = data.initPos[idx] + data.vel[idx] * t;
-        // 賦予拋物線般的熱蒸發上升煙霧感
-        array[idx + 1] = data.initPos[idx + 1] + data.vel[idx + 1] * t + (t * t * 1.5); 
-        array[idx + 2] = data.initPos[idx + 2] + data.vel[idx + 2] * t;
+        const velX = data.vel[idx] ?? 0;
+        const velY = data.vel[idx + 1] ?? 0;
+        const velZ = data.vel[idx + 2] ?? 0;
+
+        array[idx] = initX + velX * t;
+        array[idx + 1] = initY + velY * t + (t * t * 1.5); 
+        array[idx + 2] = initZ + velZ * t;
       } else {
-        // 相長凝聚：Ease-in 加速向中心坍縮
         const scale = 1 - Math.pow(progress, 2.5); 
-        array[idx] = data.initPos[idx] * scale;
-        array[idx + 1] = data.initPos[idx + 1] * scale;
-        array[idx + 2] = data.initPos[idx + 2] * scale;
+        array[idx] = initX * scale;
+        array[idx + 1] = initY * scale;
+        array[idx + 2] = initZ * scale;
       }
     }
     posAttr.needsUpdate = true;
 
     if (materialRef.current) {
       const baseOpacity = type === 'evaporate' ? 0.9 : 0.7;
-      // 蒸發的透明度下降更快，營造消散感
       const fadeCurve = type === 'evaporate' ? Math.pow(1 - progress, 1.5) : (1 - progress);
       materialRef.current.opacity = baseOpacity * fadeCurve;
     }
@@ -154,7 +157,7 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
         opacity={type === 'evaporate' ? 0.9 : 0.7} 
         blending={THREE.AdditiveBlending}
         depthWrite={false}
-        map={PARTICLE_TEXTURE} // 🌟 掛載高質量圓形發光貼圖
+        map={PARTICLE_TEXTURE}
         alphaTest={0.01}
       />
     </points>
