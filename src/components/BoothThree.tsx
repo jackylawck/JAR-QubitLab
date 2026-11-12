@@ -5,7 +5,7 @@ import { useSpring, a } from '@react-spring/three';
 import * as THREE from 'three';
 import { useTensorStore } from '../store/tensorStore';
 import { FONT_MATH_PATH } from '../constants';
-import { TensorAmplitude } from '../quantum/tensorEngine'; // 引入型別
+import { TensorAmplitude } from '../quantum/tensorEngine';
 
 const POSITIONS: [number, number, number][] = [
   [-2, 0,  1.5], // |00⟩
@@ -14,7 +14,6 @@ const POSITIONS: [number, number, number][] = [
   [ 2, 0, -1.5], // |11⟩
 ];
 
-// 🌟 優化 1：抽離獨立的 Pillar 組件，每個實例各自管理 Spring 動畫，徹底消滅 ESLint 警告
 interface PillarProps {
   position: [number, number, number];
   amplitude: TensorAmplitude;
@@ -43,10 +42,9 @@ const Pillar = ({ position, amplitude, isEntangled }: PillarProps) => {
         />
       </a.mesh>
 
-      {/* 🌟 優化 2：標籤移至柱頂 y=3.5，取消旋轉使其直視相機，解決後排被遮擋的問題 */}
+      {/* 標籤移至柱頂 y=3.5，取消旋轉使其直視相機 */}
       <group position={[0, 3.5, 0]}>
         <Suspense fallback={null}>
-          {/* 🌟 優化 3：移除黑色底板，改用 outline 描邊，提升科幻感與可讀性 */}
           <Text 
             fontSize={0.4} 
             color="#ffffff" 
@@ -62,7 +60,6 @@ const Pillar = ({ position, amplitude, isEntangled }: PillarProps) => {
   );
 };
 
-// 🌟 優化 4：徹底移除不適用的 pureVisual prop
 export const BoothThree = () => {
   const amplitudes = useTensorStore((s) => s.amplitudes);
   const isEntangled = useTensorStore((s) => s.isEntangled);
@@ -88,15 +85,23 @@ export const BoothThree = () => {
         </mesh>
       )}
 
-      {/* 渲染四個獨立的 Pillar */}
-      {POSITIONS.map((pos, i) => (
-        <Pillar 
-          key={i} 
-          position={pos} 
-          amplitude={amplitudes[i]} 
-          isEntangled={isEntangled}
-        />
-      ))}
+      {/* 🌟 核心修復：防禦性渲染 (Defensive Rendering) */}
+      {POSITIONS.map((pos, i) => {
+        // 從 amplitudes 陣列安全取值
+        const amp = amplitudes[i];
+        
+        // 若因為任何原因 (如 Store 初始化過慢) 導致該索引不存在，則安全跳過，避免破壞整個 React 渲染樹
+        if (!amp) return null;
+
+        return (
+          <Pillar 
+            key={i} 
+            position={pos} 
+            amplitude={amp} 
+            isEntangled={isEntangled}
+          />
+        );
+      })}
     </group>
   );
 };
