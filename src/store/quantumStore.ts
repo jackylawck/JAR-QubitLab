@@ -4,15 +4,9 @@
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
  */
 import { create } from 'zustand';
-import { ComplexAmplitude, GateName, RawComplex } from '../quantum/types';
-import {
-  initZeroState,
-  applyGatePure,
-  applyPhaseGate,
-  calculateConcurrence,
-  measureCollapsePure,
-} from '../quantum/engine';
-import { QUANTUM_CONFIG } from '../constants'; // 🌟 引入全域設定，消滅雙重真相源
+import { ComplexAmplitude, GateName } from '../quantum/types';
+import { TensorEngine, GATES } from '../quantum/tensorEngine';
+import { QUANTUM_CONFIG } from '../constants'; 
 
 export interface QuantumState {
   qubitCount: number;
@@ -20,70 +14,74 @@ export interface QuantumState {
   refIdx: number;
   isMaximallyEntangled: boolean;
 
-  // 核心通用與測量 API (Sprint 1 & Sprint 3)
+  // 通用操作與測量 (Sprint 1)
   applyGate: (gate: GateName, targets: number[]) => void;
   collapse: (rng?: () => number) => number;
   reset: () => void;
   resetBoothOne: () => void;
 
-  // 連續相位干涉專用 API (Sprint 2 展台 2)
+  // 連續相位干涉專用 (Sprint 2)
   isSplit: boolean;
   phaseAngle: number;
-  _afterHSnapshot: ReadonlyArray<RawComplex> | null; 
+  // 🌟 Zero-GC 優化：使用 Float64Array 取代物件陣列深拷貝
+  _afterHSnapshotState: Float64Array | null; 
+  _afterHSnapshotRefIdx: number | null;
+  
   splitBoothTwo: () => void;
   setPhaseAngle: (angle: number) => void;
   collideBoothTwo: () => void;
   resetBoothTwo: () => void;
 }
 
+// 🌟 全域共享的單量子位元引擎，所有 Booth 1 & 2 的運算都在此記憶體池中進行
+const engine = new TensorEngine(QUANTUM_CONFIG.INITIAL_QUBITS);
+
 export const useQuantumStore = create<QuantumState>((set, get) => ({
-  qubitCount: QUANTUM_CONFIG.INITIAL_QUBITS, // 🌟 使用 constants
-  ...initZeroState(QUANTUM_CONFIG.INITIAL_QUBITS),
-  isMaximallyEntangled: false,
+  qubitCount: QUANTUM_CONFIG.INITIAL_QUBITS, 
+  amplitudes: engine.getAmplitudes(),
+  refIdx: engine.refIdx,
+  isMaximallyEntangled: false, // 單 Qubit 永遠為 false
 
   // ==========================================
-  // Sprint 1 & 3: 通用邏輯與測量坍縮
+  // Sprint 1: 通用邏輯與測量坍縮
   // ==========================================
-  applyGate: (gate, targets) => {
-    set((state) => {
-      const { amplitudes: nextAmps, refIdx: nextRef } = applyGatePure(
-        state.amplitudes,
-        state.refIdx,
-        gate,
-        targets,
-        state.qubitCount
-      );
+  applyGate: (gateName, targets) => {
+    set(() => {
+      const gate = GATES[gateName];
+      if (gate) {
+        engine.applyGate(gate, targets[0]);
+      }
       return {
-        amplitudes: nextAmps,
-        refIdx: nextRef,
-        isMaximallyEntangled: calculateConcurrence(nextAmps) > 0.99, // 🌟 對接引擎原生函數
+        amplitudes: engine.getAmplitudes(),
+        refIdx: engine.refIdx,
       };
     });
   },
 
-  collapse: (rng = Math.random) => {
+  collapse: () => {
     let outcome = 0;
-    set((state) => {
-      // 🌟 將骯髒的機率擲骰邏輯外包給純函數 `measureCollapsePure`，Store 保持純淨
-      const result = measureCollapsePure(state.amplitudes, state.qubitCount, rng);
-      outcome = result.collapsedIndex;
+    set(() => {
+      // 🌟 直接調用高階引擎的測量方法，處理坍縮與歸一化
+      outcome = engine.measureQubit(0);
       return {
-        amplitudes: result.amplitudes,
-        refIdx: result.refIdx,
-        isMaximallyEntangled: false,
+        amplitudes: engine.getAmplitudes(),
+        refIdx: engine.refIdx,
       };
     });
     return outcome;
   },
 
   reset: () => {
-    set((state) => ({
-      ...initZeroState(state.qubitCount),
+    engine.reset();
+    set({
+      amplitudes: engine.getAmplitudes(),
+      refIdx: engine.refIdx,
       isMaximallyEntangled: false,
       isSplit: false,
       phaseAngle: 0,
-      _afterHSnapshot: null,
-    }));
+      _afterHSnapshotState: null,
+      _afterHSnapshotRefIdx: null,
+    });
   },
   resetBoothOne: () => get().reset(),
 
@@ -92,26 +90,25 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
   // ==========================================
   isSplit: false,
   phaseAngle: 0,
-  _afterHSnapshot: null,
+  _afterHSnapshotState: null,
+  _afterHSnapshotRefIdx: null,
 
   splitBoothTwo: () => {
-    set((state) => {
-      const zero = initZeroState(state.qubitCount);
-      const afterH = applyGatePure(zero.amplitudes, zero.refIdx, 'H', [0], state.qubitCount);
+    set(() => {
+      engine.reset();
+      const H = GATES.H;
+      if (H) engine.applyGate(H, 0);
       
-      // 🌟 優化 1：深拷貝快取，徹底杜絕物件參照污染 (Object Reference Contamination)
-      // 在嚴苛的 React 18 Concurrent Mode 甚至未來的 GC 週期中，
-      // 若 afterH.amplitudes 與 _afterHSnapshot 指向同一個記憶體位址，
-      // 可能導致後續在 setPhaseAngle 修改狀態時，原始快照被意外覆寫。
-      const snapshot: ReadonlyArray<RawComplex> = afterH.amplitudes.map(amp => ({ re: amp.re, im: amp.im }));
+      // 🌟 Zero-GC 快照：直接複製底層陣列記憶體
+      const snapshot = new Float64Array(engine.state);
 
       return {
         isSplit: true,
         phaseAngle: 0,
-        amplitudes: afterH.amplitudes,
-        refIdx: afterH.refIdx,
-        isMaximallyEntangled: false,
-        _afterHSnapshot: snapshot, 
+        amplitudes: engine.getAmplitudes(),
+        refIdx: engine.refIdx,
+        _afterHSnapshotState: snapshot, 
+        _afterHSnapshotRefIdx: engine.refIdx,
       };
     });
   },
@@ -119,22 +116,26 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
   setPhaseAngle: (angle: number) => {
     const normAngle = ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     set((state) => {
-      if (!state.isSplit || !state._afterHSnapshot) return { phaseAngle: normAngle };
+      if (!state.isSplit || !state._afterHSnapshotState || state._afterHSnapshotRefIdx === null) {
+        return { phaseAngle: normAngle };
+      }
 
-      // 🌟 60Hz 極速運算：傳入快取的 Raw 狀態陣列
-      const afterP = applyPhaseGate(
-        state._afterHSnapshot,
-        normAngle,
-        0,
-        state.qubitCount,
-        state.refIdx
-      );
+      // 🌟 極速狀態恢復：覆寫陣列，瞬間時光倒流
+      engine.state.set(state._afterHSnapshotState);
+      engine.refIdx = state._afterHSnapshotRefIdx;
+
+      // 在恢復的狀態上套用新的 Phase (模擬 Z 軸旋轉)
+      // |ψ⟩ = (|0⟩ + e^{iφ}|1⟩)/√2
+      const P = [
+        { re: 1, im: 0 }, { re: 0, im: 0 },
+        { re: 0, im: 0 }, { re: Math.cos(normAngle), im: Math.sin(normAngle) }
+      ];
+      engine.applyGate(P, 0);
 
       return {
         phaseAngle: normAngle,
-        amplitudes: afterP.amplitudes,
-        refIdx: afterP.refIdx,
-        isMaximallyEntangled: false,
+        amplitudes: engine.getAmplitudes(),
+        refIdx: engine.refIdx,
       };
     });
   },
@@ -142,13 +143,15 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
   collideBoothTwo: () => {
     set((state) => {
       if (!state.isSplit) return state;
-      const finalState = applyGatePure(state.amplitudes, state.refIdx, 'H', [0], state.qubitCount);
+      const H = GATES.H;
+      if (H) engine.applyGate(H, 0);
+
       return {
         isSplit: false,
-        amplitudes: finalState.amplitudes,
-        refIdx: finalState.refIdx,
-        isMaximallyEntangled: false,
-        _afterHSnapshot: null,
+        amplitudes: engine.getAmplitudes(),
+        refIdx: engine.refIdx,
+        _afterHSnapshotState: null,
+        _afterHSnapshotRefIdx: null,
       };
     });
   },
