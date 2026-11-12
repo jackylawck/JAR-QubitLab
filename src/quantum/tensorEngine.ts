@@ -56,10 +56,11 @@ export class TensorEngine {
   private lockGlobalPhase(prevRefIdx: number): void {
     let bestIdx = 0;
     let bestModSq = -1;
+    
+    // 🌟 優化 1：全面使用 ! 取代 ?? 0，消滅 V8 引擎分支預測開銷
     for (let i = 0; i < this.stateSize; i++) {
-      // 🌟 修復 TS2532：防禦陣列讀取
-      const r = this.state[i * 2] ?? 0;
-      const im = this.state[i * 2 + 1] ?? 0;
+      const r = this.state[i * 2]!;
+      const im = this.state[i * 2 + 1]!;
       const m = r * r + im * im;
       if (m > bestModSq + 1e-9) {
         bestModSq = m;
@@ -67,21 +68,21 @@ export class TensorEngine {
       }
     }
 
-    const prevR = this.state[prevRefIdx * 2] ?? 0;
-    const prevI = this.state[prevRefIdx * 2 + 1] ?? 0;
+    const prevR = this.state[prevRefIdx * 2]!;
+    const prevI = this.state[prevRefIdx * 2 + 1]!;
     const prevModSq = prevR * prevR + prevI * prevI;
     const shouldSwitch = prevModSq < 1e-6 || bestModSq > prevModSq * 1.5;
     const refIdx = shouldSwitch ? bestIdx : prevRefIdx;
 
-    const refR = this.state[refIdx * 2] ?? 0;
-    const refI = this.state[refIdx * 2 + 1] ?? 0;
+    const refR = this.state[refIdx * 2]!;
+    const refI = this.state[refIdx * 2 + 1]!;
     const refPhase = Math.atan2(refI, refR);
     const cos = Math.cos(-refPhase);
     const sin = Math.sin(-refPhase);
 
     for (let i = 0; i < this.stateSize; i++) {
-      const r = this.state[i * 2] ?? 0;
-      const im = this.state[i * 2 + 1] ?? 0;
+      const r = this.state[i * 2]!;
+      const im = this.state[i * 2 + 1]!;
       this.state[i * 2] = r * cos - im * sin;
       this.state[i * 2 + 1] = r * sin + im * cos;
     }
@@ -91,15 +92,15 @@ export class TensorEngine {
 
   public applyGate(gate: QuantumGate, targetQubit: number): void {
     const bit = this.bitMask(targetQubit);
-    const [m00r = 0, m00i = 0, m01r = 0, m01i = 0, m10r = 0, m10i = 0, m11r = 0, m11i = 0] = gate; // 🌟 防禦解構
+    const [m00r = 0, m00i = 0, m01r = 0, m01i = 0, m10r = 0, m10i = 0, m11r = 0, m11i = 0] = gate; 
 
     for (let i = 0; i < this.stateSize; i++) {
       if ((i & bit) === 0) {
         const j = i | bit;
-        const r0 = this.state[i * 2] ?? 0;
-        const i0 = this.state[i * 2 + 1] ?? 0;
-        const r1 = this.state[j * 2] ?? 0;
-        const i1 = this.state[j * 2 + 1] ?? 0;
+        const r0 = this.state[i * 2]!;
+        const i0 = this.state[i * 2 + 1]!;
+        const r1 = this.state[j * 2]!;
+        const i1 = this.state[j * 2 + 1]!;
 
         this.state[i * 2]     = (m00r * r0 - m00i * i0) + (m01r * r1 - m01i * i1);
         this.state[i * 2 + 1] = (m00r * i0 + m00i * r0) + (m01r * i1 + m01i * r1);
@@ -118,8 +119,8 @@ export class TensorEngine {
 
     for (let i = 0; i < this.stateSize; i++) {
       if ((i & bit) !== 0) {
-        const r = this.state[i * 2] ?? 0;
-        const im = this.state[i * 2 + 1] ?? 0;
+        const r = this.state[i * 2]!;
+        const im = this.state[i * 2 + 1]!;
         this.state[i * 2]     = r * cos - im * sin;
         this.state[i * 2 + 1] = r * sin + im * cos;
       }
@@ -136,10 +137,10 @@ export class TensorEngine {
     for (let i = 0; i < this.stateSize; i++) {
       if ((i & ctrlBit) !== 0 && (i & tgtBit) === 0) {
         const j = i | tgtBit;
-        const tr = this.state[i * 2] ?? 0;
-        const ti = this.state[i * 2 + 1] ?? 0;
-        this.state[i * 2]     = this.state[j * 2] ?? 0;
-        this.state[i * 2 + 1] = this.state[j * 2 + 1] ?? 0;
+        const tr = this.state[i * 2]!;
+        const ti = this.state[i * 2 + 1]!;
+        this.state[i * 2]     = this.state[j * 2]!;
+        this.state[i * 2 + 1] = this.state[j * 2 + 1]!;
         this.state[j * 2]     = tr;
         this.state[j * 2 + 1] = ti;
       }
@@ -151,13 +152,14 @@ export class TensorEngine {
   public collapse(): number {
     const rand = Math.random();
     let cumulative = 0;
-    let idx = 0;
+    // 🌟 優化 3：預設為最後一個 index 處理浮點數精度導致未中鏢的情況，移除迴圈內的判斷
+    let idx = this.stateSize - 1; 
 
     for (let i = 0; i < this.stateSize; i++) {
-      const r = this.state[i * 2] ?? 0;
-      const im = this.state[i * 2 + 1] ?? 0;
+      const r = this.state[i * 2]!;
+      const im = this.state[i * 2 + 1]!;
       cumulative += r * r + im * im;
-      if (rand <= cumulative || i === this.stateSize - 1) {
+      if (rand <= cumulative) {
         idx = i;
         break;
       }
@@ -172,8 +174,8 @@ export class TensorEngine {
   public getAmplitudes(): TensorAmplitude[] {
     const results: TensorAmplitude[] = [];
     for (let i = 0; i < this.stateSize; i++) {
-      const re = this.state[i * 2] ?? 0;
-      const im = this.state[i * 2 + 1] ?? 0;
+      const re = this.state[i * 2]!;
+      const im = this.state[i * 2 + 1]!;
       const probability = re * re + im * im;
       const modulus = Math.sqrt(probability);
       let phase = Math.atan2(im, re);
@@ -194,16 +196,16 @@ export class TensorEngine {
 
   public computeConcurrence(): number {
     if (this.numQubits !== 2) return 0;
-    const amps = this.getAmplitudes();
     
-    // 🌟 核心修復：使用安全降級物件取代強制陣列解構 (消除 TS18048)
-    const a00 = amps[0] ?? { re: 0, im: 0 };
-    const a01 = amps[1] ?? { re: 0, im: 0 };
-    const a10 = amps[2] ?? { re: 0, im: 0 };
-    const a11 = amps[3] ?? { re: 0, im: 0 };
+    // 🌟 優化 2：直接從狀態陣列取值計算，避免呼叫 getAmplitudes() 產生無謂的 GC 垃圾
+    const a00Re = this.state[0]!; const a00Im = this.state[1]!;
+    const a01Re = this.state[2]!; const a01Im = this.state[3]!;
+    const a10Re = this.state[4]!; const a10Im = this.state[5]!;
+    const a11Re = this.state[6]!; const a11Im = this.state[7]!;
     
-    const re = a00.re * a11.re - a00.im * a11.im - (a01.re * a10.re - a01.im * a10.im);
-    const im = a00.re * a11.im + a00.im * a11.re - (a01.re * a10.im + a01.im * a10.re);
+    const re = a00Re * a11Re - a00Im * a11Im - (a01Re * a10Re - a01Im * a10Im);
+    const im = a00Re * a11Im + a00Im * a11Re - (a01Re * a10Im + a01Im * a10Re);
+    
     return 2 * Math.sqrt(re * re + im * im);
   }
 }
