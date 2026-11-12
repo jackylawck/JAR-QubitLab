@@ -19,7 +19,8 @@ export const initCyberpunkEasterEgg = () => {
   const zhCardStyle = `${baseCard} color: #f1f5f9; font-size: 11.5px; line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; border: 1px solid #1e293b; width: 100%;`;
   const enCardStyle = `${baseCard} color: #94a3b8; font-size: 10.5px; line-height: 1.5; font-family: monospace; border: 1px solid #1e293b; width: 100%;`;
   const termHighlight = 'color: #f59e0b; font-weight: bold; font-family: monospace; text-shadow: 0 0 4px rgba(245,158,11,0.4);';
-  const tagStyle = `${baseCard} color: #10b981; font-weight: bold; font-family: monospace; font-size: 11px; border: 1px solid #065f46;`;
+  
+  // 🌟 修復 TS6133：移除未使用的 tagStyle，並精簡不必要的命令樣式
   const commandStyle = `${baseCard} color: #a855f7; font-weight: bold; font-size: 11px; font-family: monospace; border: 1px dotted #a855f7; cursor: text; line-height: 1.6;`;
 
   // ==========================================
