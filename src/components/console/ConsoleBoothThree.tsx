@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useTensorStore } from '../../store/tensorStore';
 import { useLocaleStore } from '../../store/localeStore';
-import { sound } from '../../audio/soundEngine'; // 🌟 引入音效引擎
+import { sound } from '../../audio/soundEngine'; 
 
 const BASIS_LABELS = ['|00⟩', '|01⟩', '|10⟩', '|11⟩'] as const;
 
@@ -14,25 +14,35 @@ interface ConsoleBoothThreeProps {
 export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoothThreeProps) => {
   const { applyH, applyCNOT, sample20x, reset, isSampling, isEntangled, sampleHistory, amplitudes } = useTensorStore();
   
-  // 🌟 取出 t (字典) 替換硬編碼
   const t = useLocaleStore((s) => s.t);
   const locale = useLocaleStore((s) => s.locale);
 
   const stats = [0, 0, 0, 0];
-  sampleHistory.forEach(idx => stats[idx]++);
+  
+  // 🌟 核心修復 1：陣列越界防護 (TS2532)
+  // 確保 sampleHistory 內的 idx 值域介於 0~3 之間，避免修改未定義的索引
+  sampleHistory.forEach(idx => {
+    if (idx >= 0 && idx < stats.length) {
+      stats[idx]++;
+    }
+  });
 
   const historyLen = sampleHistory.length;
 
-  // 🌟 優化 1：音效副作用抽離，並加入 setTimeout 清理機制防記憶體洩漏與競態
+  // 🌟 核心修復 2：對齊 useEffect 的 Return Type (TS7030)
+  // 強制讓函式不管走哪一條路徑，最終都返回 void 或是 Cleanup Function
   useEffect(() => {
     if (historyLen > 0 && historyLen <= 20) {
       sound.playTick(historyLen - 1);
     }
+    
     if (historyLen === 20) {
       const timer = setTimeout(() => sound.playVictoryChord(), 150);
-      return () => clearTimeout(timer); // 確保 150ms 內按 Reset 會取消和弦
+      return () => clearTimeout(timer);
     }
-    // sound 是單例且引用穩定，壓制 ESLint 警告
+    
+    // 顯式宣告空回傳，滿足 TypeScript 型別守衛
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyLen]);
 
@@ -54,7 +64,7 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
         // 操作面板模式
         <div className="grid grid-cols-3 gap-2 sm:gap-4 flex-1">
           <button
-            onClick={() => { sound.playLever(); applyH(0); }} // 🌟 優化 2：綁定分光音效
+            onClick={() => { sound.playLever(); applyH(0); }}
             disabled={isSampling}
             className="flex flex-col items-center justify-center bg-slate-900 border border-slate-700 rounded-xl hover:border-sky-500 hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50"
           >
@@ -63,7 +73,7 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
           </button>
 
           <button
-            onClick={() => { sound.playMerge(); applyCNOT(0, 1); }} // 🌟 優化 3：綁定 80→220Hz 能量凝聚音效
+            onClick={() => { sound.playMerge(); applyCNOT(0, 1); }} 
             disabled={isSampling}
             className="flex flex-col items-center justify-center bg-slate-900 border border-slate-700 rounded-xl hover:border-purple-500 hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 relative overflow-hidden"
           >
@@ -86,7 +96,6 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
       ) : (
         // 原理解析模式
         <div className="text-xs text-slate-300 leading-relaxed overflow-y-auto max-h-[140px] py-1 px-2 font-sans flex-1 border border-slate-800/60 rounded-xl bg-slate-900/40">
-          {/* 🌟 優化 4：替換為字典變數，落實 i18n */}
           <p>{t.boothThree.explanation}</p>
         </div>
       )}
@@ -112,7 +121,7 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
           [ {isExplaining ? (locale === 'zh' ? '關閉解析' : 'CLOSE THEORY') : (locale === 'zh' ? '原理解析' : 'THEORY')} ]
         </button>
         <button 
-          onClick={() => { sound.playLever(); reset(); }} // 🌟 優化 5：使用 playLever 替代不存在的 playClick
+          onClick={() => { sound.playLever(); reset(); }} 
           disabled={isSampling} 
           className="text-[10px] text-slate-500 hover:text-white transition-colors font-mono disabled:opacity-30 active:scale-95"
         >
