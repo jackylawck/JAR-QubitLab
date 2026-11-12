@@ -1,10 +1,9 @@
 // src/components/QuantumField.tsx
-import { useMemo, useRef } from 'react'; // 🌟 修正：小寫 import
+import { useMemo, useRef } from 'react'; 
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-// 🌟 優化 1：全域零延遲生成「柔光圓形粒子」材質
-// 讓背景星空不再是粗糙的方形點，而是有著高斯模糊光暈的量子微粒
+// 🌟 全域零延遲生成「柔光圓形粒子」材質
 const PARTICLE_TEXTURE = (() => {
   if (typeof document === 'undefined') return null;
   const canvas = document.createElement('canvas');
@@ -48,13 +47,22 @@ export function QuantumField({ count = 500 }: { count?: number }) {
     // 背景緩慢自轉
     pointsRef.current.rotation.y = t * 0.015;
 
+    // 🌟 核心修復 1：屬性守衛 (Attribute Guard)
+    // 確保 position 屬性存在，消滅 TS18048
     const posAttr = pointsRef.current.geometry.attributes.position;
+    if (!posAttr) return; 
+
     const array = posAttr.array as Float32Array;
 
-    // 錨定原始 Y 坐標進行正弦微動
+    // 🌟 核心修復 2：防禦性陣列存取 (Defensive Array Access)
+    // 錨定原始 Y 坐標進行正弦微動，消滅 TS2532
     for (let i = 0; i < count; i++) {
       const idx = i * 3 + 1;
-      array[idx] = originalY[i] + Math.sin(t * 1.4 + phases[i]) * 0.12;
+      
+      const baseY = originalY[i] ?? 0;
+      const phase = phases[i] ?? 0;
+
+      array[idx] = baseY + Math.sin(t * 1.4 + phase) * 0.12;
     }
     posAttr.needsUpdate = true;
   });
@@ -65,14 +73,14 @@ export function QuantumField({ count = 500 }: { count?: number }) {
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.16} // 🌟 稍微放大以補償柔光邊緣的透明度
+        size={0.16} 
         color="#38bdf8"
         transparent
         opacity={0.4}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
-        map={PARTICLE_TEXTURE} // 🌟 掛載柔光貼圖
-        toneMapped={false}     // 🌟 優化 2：免受 ACES 濾鏡壓暗，保持純粹的天藍色霓虹光
+        map={PARTICLE_TEXTURE} 
+        toneMapped={false}     
       />
     </points>
   );
