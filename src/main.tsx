@@ -12,32 +12,43 @@ import { initCyberpunkEasterEgg } from './utils/easterEgg';
 // 🌟 啟動 F12 賽博龐克量子科普彩蛋 (LAST_ORDER 協定)
 initCyberpunkEasterEgg();
 
-// 🌟 優化 1：安全提取環境變數，防堵 Vitest/Jest 等純 Node 測試環境中 import.meta 解析失敗導致的崩潰
+// 🌟 安全提取環境變數，防堵純 Node 測試環境中 import.meta 解析失敗
 const isDev = import.meta.env?.DEV ?? false;
 const isProd = import.meta.env?.PROD ?? false;
-const baseUrl = import.meta.env?.BASE_URL ?? '/';
+const rawBaseUrl = import.meta.env?.BASE_URL ?? '/';
+// 🌟 優化 1：路徑結尾斜線防禦，避免 BASE_URL 缺少 '/' 時拼接出錯誤的 sw.js 路徑
+const baseUrl = rawBaseUrl.endsWith('/') ? rawBaseUrl : `${rawBaseUrl}/`;
 
 // 🌟 移動端除錯：僅在開發環境 (DEV) 且為觸控螢幕時動態載入 Eruda 面板
 if (isDev && typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches) {
   import('eruda')
     .then(({ default: eruda }) => eruda.init())
-    // 🌟 優化 2：捕捉動態載入失敗 (如網路抖動或模組缺失)，防止 Unhandled Promise Rejection 污染主線程
-    .catch((err) => console.warn('[JAR-QubitLab] Eruda failed to load:', err)); 
+    .catch((err) => console.warn('[JAR-QubitLab] Eruda failed to load:', err));
 }
 
-// 🌟 優化 3：PWA 離線支援 (Service Worker 註冊)
-// 確保量子實驗室能達到「斷網可用、純前端 RAM 運行」的極致隱私與效能標準
-if (isProd && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+// 🌟 優化 2：PWA 離線支援與無縫版本熱更新 (Service Worker Lifecycle)
+if (isProd && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // 配合 Vite PWA 或標準 sw.js，並對接 GitHub Pages 的 Base URL
-    navigator.serviceWorker.register(`${baseUrl}sw.js`)
+    const swUrl = `${baseUrl}sw.js`;
+
+    navigator.serviceWorker
+      .register(swUrl, { scope: baseUrl })
       .catch((err) => console.warn('[JAR-QubitLab] Service Worker registration failed:', err));
+
+    // 當新版 sw.js 透過 skipWaiting() 接管控制權時，自動刷新頁面以對齊最新 Vite Chunk Hash，
+    // 防止舊版快取 HTML 請求已被覆蓋的舊版 JS 檔而產生白畫面
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
   });
 }
 
 const rootElement = document.getElementById('root');
 
-// 🌟 防禦性編程：取代危險的非空斷言 (!)，容器缺失時拋出精確異常
+// 🌟 防禦性編程：取代非空斷言 (!)，容器缺失時拋出精確異常
 if (!rootElement) {
   throw new Error('❌ Failed to find the root element. Ensure there is a <div id="root"></div> in index.html.');
 }
