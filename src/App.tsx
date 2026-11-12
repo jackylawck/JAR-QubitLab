@@ -5,20 +5,28 @@
  */
 import { Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Html, PerspectiveCamera } from '@react-three/drei';
+import { OrbitControls, Html } from '@react-three/drei';
+import { useSpring, a } from '@react-spring/three';
+
 import { BoothOne } from './components/BoothOne';
 import { BoothTwo } from './components/BoothTwo';
 import { BoothThree } from './components/BoothThree';
+import { BoothFour } from './components/BoothFour'; // 🌟 匯入展台 4
 import { LanguageToggle } from './components/LanguageToggle';
 import { GovernanceNotice } from './components/GovernanceNotice';
+
 import { ConsoleBoothOne } from './components/console/ConsoleBoothOne';
 import { ConsoleBoothTwo } from './components/console/ConsoleBoothTwo';
 import { ConsoleBoothThree } from './components/console/ConsoleBoothThree';
-import { useAnimationLock } from './hooks/useAnimationLock';
+import { ConsoleBoothFour } from './components/console/ConsoleBoothFour'; // 🌟 匯入展台 4 面板
+
 import { useLocaleStore } from './store/localeStore';
 import { useQuantumStore } from './store/quantumStore';
 import { useTensorStore } from './store/tensorStore';
+import { useTeleportStore } from './store/teleportStore'; // 🌟 匯入展台 4 Store
 import { sound } from './audio/soundEngine';
+
+export type BoothType = 'one' | 'two' | 'three' | 'four';
 
 function BoothFallback() {
   const t = useLocaleStore((state) => state.t);
@@ -43,12 +51,13 @@ const BoothTab = ({
   label: string; 
   isActive: boolean; 
   onClick: () => void;
-  colorTheme: 'blue' | 'cyan' | 'purple'
+  colorTheme: 'blue' | 'cyan' | 'purple' | 'emerald'
 }) => {
   const themeClasses = {
     blue: 'bg-blue-600 ring-blue-400',
     cyan: 'bg-cyan-600 ring-cyan-400',
     purple: 'bg-purple-600 ring-purple-400',
+    emerald: 'bg-emerald-600 ring-emerald-400',
   };
 
   return (
@@ -63,17 +72,43 @@ const BoothTab = ({
   );
 };
 
+// 🌟 優化 3：平滑過渡的動態攝影機
+const AnimatedCamera = ({ activeBooth }: { activeBooth: BoothType }) => {
+  // 針對不同展台配置最佳觀測視角
+  const configs = {
+    one: { pos: [0, 4.5, 9.5], fov: 46 },
+    two: { pos: [0, 4.5, 9.5], fov: 46 },
+    three: { pos: [0, 8, 11], fov: 42 },
+    four: { pos: [0, 5, 10], fov: 45 },
+  };
+
+  const current = configs[activeBooth];
+  const { pos, fov } = useSpring({
+    pos: current.pos,
+    fov: current.fov,
+    config: { mass: 1, tension: 120, friction: 20 },
+  });
+
+  return (
+    <a.perspectiveCamera
+      makeDefault
+      position={pos as any}
+      fov={fov}
+      near={0.1}
+      far={1000}
+    />
+  );
+};
+
 export default function App() {
-  const { isAnimating } = useAnimationLock();
-  const [activeBooth, setActiveBooth] = useState<'one' | 'two' | 'three'>('one');
+  const [activeBooth, setActiveBooth] = useState<BoothType>('one');
   const [isExplaining, setIsExplaining] = useState(false);
   
-  // 🌟 修正 TS6133：移除未使用的 `t`，僅保留 locale
   const locale = useLocaleStore((s) => s.locale);
-
   const resetBoothOne = useQuantumStore((s) => s.resetBoothOne);
   const resetBoothTwo = useQuantumStore((s) => s.resetBoothTwo);
   const resetTensor = useTensorStore((s) => s.reset);
+  const resetTeleport = useTeleportStore((s) => s.reset);
 
   useEffect(() => {
     resetBoothOne();
@@ -94,21 +129,17 @@ export default function App() {
     };
   }, []);
 
-  const handleSwitchBooth = (booth: 'one' | 'two' | 'three') => {
+  const handleSwitchBooth = (booth: BoothType) => {
     if (booth === activeBooth) return;
 
     setIsExplaining(false);
-    
-    // 🌟 修正 TS2551：soundEngine 中並沒有 playClick 方法，改用真實存在的 playLever
     sound.playLever(); 
 
-    if (booth === 'one') {
-      resetBoothOne();
-    } else if (booth === 'two') {
-      resetBoothTwo();
-    } else {
-      resetTensor();
-    }
+    if (booth === 'one') resetBoothOne();
+    else if (booth === 'two') resetBoothTwo();
+    else if (booth === 'three') resetTensor();
+    else if (booth === 'four') resetTeleport();
+    
     setActiveBooth(booth);
   };
 
@@ -116,46 +147,30 @@ export default function App() {
     <div className="w-full h-[100dvh] bg-gray-950 text-gray-100 flex flex-col overflow-hidden select-none touch-none">
       <div className="relative w-full flex-1 min-h-0 bg-[#030712]">
         <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 py-2.5 sm:px-6 pointer-events-none">
-          <div className="pointer-events-auto">
-            <h1 className="text-sm sm:text-lg font-black tracking-tight text-white drop-shadow">
-              J.A.R. QubitLab <span className="text-sky-400 font-light">|</span> <span className="text-xs sm:text-sm font-medium text-slate-300">{locale === 'zh' ? '量子觀測室' : 'Chamber'}</span>
+          <div className="pointer-events-auto flex items-center">
+            <h1 className="text-sm sm:text-lg font-black tracking-tight text-white drop-shadow hidden sm:block">
+              J.A.R. QubitLab <span className="text-sky-400 font-light mx-1">|</span>
             </h1>
+            <span className="text-xs sm:text-sm font-medium text-slate-300 ml-1">
+              {locale === 'zh' ? '量子觀測室' : 'QubitLab'}
+            </span>
           </div>
-          <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
+          
+          {/* 🌟 擴充至 4 個 Tab */}
+          <div className="flex items-center gap-1.5 pointer-events-auto shrink-0 overflow-x-auto pb-1 max-w-[65%] sm:max-w-none hide-scrollbar">
             <LanguageToggle />
-            <BoothTab 
-              label={locale === 'zh' ? '展台 1' : 'Booth 1'} 
-              isActive={activeBooth === 'one'} 
-              onClick={() => handleSwitchBooth('one')} 
-              colorTheme="blue" 
-            />
-            <BoothTab 
-              label={locale === 'zh' ? '展台 2' : 'Booth 2'} 
-              isActive={activeBooth === 'two'} 
-              onClick={() => handleSwitchBooth('two')} 
-              colorTheme="cyan" 
-            />
-            <BoothTab 
-              label={locale === 'zh' ? '展台 3' : 'Booth 3'} 
-              isActive={activeBooth === 'three'} 
-              onClick={() => handleSwitchBooth('three')} 
-              colorTheme="purple" 
-            />
+            <BoothTab label={locale === 'zh' ? '展台 1' : 'Booth 1'} isActive={activeBooth === 'one'} onClick={() => handleSwitchBooth('one')} colorTheme="blue" />
+            <BoothTab label={locale === 'zh' ? '展台 2' : 'Booth 2'} isActive={activeBooth === 'two'} onClick={() => handleSwitchBooth('two')} colorTheme="cyan" />
+            <BoothTab label={locale === 'zh' ? '展台 3' : 'Booth 3'} isActive={activeBooth === 'three'} onClick={() => handleSwitchBooth('three')} colorTheme="purple" />
+            <BoothTab label={locale === 'zh' ? '展台 4' : 'Booth 4'} isActive={activeBooth === 'four'} onClick={() => handleSwitchBooth('four')} colorTheme="emerald" />
           </div>
         </header>
 
-        <Canvas 
-          dpr={[1, 2]}
-          frameloop={isAnimating ? 'always' : 'demand'}
-          gl={{ antialias: true }} 
-        >
-          <PerspectiveCamera 
-            makeDefault 
-            position={activeBooth === 'three' ? [0, 8, 11] : [0, 4.5, 9.5]} 
-            fov={activeBooth === 'three' ? 42 : 46} 
-          />
-          <color attach="background" args={['#030712']} />
+        {/* 🌟 優化 2：移除頻繁切換 frameloop，保持 WebGL 管線穩定 */}
+        <Canvas dpr={[1, 2]} frameloop="always" gl={{ antialias: true }}>
+          <AnimatedCamera activeBooth={activeBooth} />
           
+          <color attach="background" args={['#030712']} />
           <ambientLight intensity={0.85} />
           <directionalLight position={[5, 10, 5]} intensity={1.3} />
           <pointLight position={[-5, 5, -5]} intensity={0.5} />
@@ -173,6 +188,7 @@ export default function App() {
             {activeBooth === 'one' && <BoothOne pureVisual />}
             {activeBooth === 'two' && <BoothTwo pureVisual />}
             {activeBooth === 'three' && <BoothThree />}
+            {activeBooth === 'four' && <BoothFour />}
           </Suspense>
         </Canvas>
 
@@ -185,6 +201,7 @@ export default function App() {
         {activeBooth === 'one' && <ConsoleBoothOne isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
         {activeBooth === 'two' && <ConsoleBoothTwo isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
         {activeBooth === 'three' && <ConsoleBoothThree isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
+        {activeBooth === 'four' && <ConsoleBoothFour isExplaining={isExplaining} setIsExplaining={setIsExplaining} />}
       </footer>
 
       <GovernanceNotice />
