@@ -3,9 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=18.18.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "verify": "node scripts/verify-build.mjs"
