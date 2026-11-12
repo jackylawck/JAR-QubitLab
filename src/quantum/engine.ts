@@ -8,15 +8,25 @@ import { ComplexAmplitude, GateName, RawComplex } from './types';
 const MAX_SCRATCH_SIZE = 16; 
 const scratchRe = new Float64Array(MAX_SCRATCH_SIZE);
 const scratchIm = new Float64Array(MAX_SCRATCH_SIZE);
+// 🌟 優化 2：預分配機率暫存區，消滅 measureCollapsePure 內的 GC
+const scratchProb = new Float64Array(MAX_SCRATCH_SIZE);
+
+const INV_SQRT2 = 1 / Math.SQRT2;
 
 /**
- * 將輸入狀態載入連續記憶體暫存區 (🌟 修復 TS2532/TS18048：加入安全 fallback)
+ * 將輸入狀態載入連續記憶體暫存區 
+ * (使用 if 取代 三元運算子與 ??，對 V8 引擎的 JIT 最佳化更友善)
  */
 function loadStateToScratch(state: ReadonlyArray<RawComplex>, size: number): void {
   for (let i = 0; i < size; i++) {
     const c = state[i];
-    scratchRe[i] = c ? c.re : 0;
-    scratchIm[i] = c ? c.im : 0;
+    if (c) {
+      scratchRe[i] = c.re;
+      scratchIm[i] = c.im;
+    } else {
+      scratchRe[i] = 0;
+      scratchIm[i] = 0;
+    }
   }
 }
 
@@ -38,9 +48,10 @@ function processFromScratch(
   let bestIdx = 0;
   let bestModSq = -1;
 
+  // 🌟 優化 1：使用 ! 取代 ?? 0，消滅 Type Guard 在迴圈內產生的運行時分支
   for (let i = 0; i < size; i++) {
-    const re = scratchRe[i] ?? 0;
-    const im = scratchIm[i] ?? 0;
+    const re = scratchRe[i]!;
+    const im = scratchIm[i]!;
     const m = re * re + im * im;
     if (m > bestModSq + 1e-9) {
       bestModSq = m;
@@ -51,24 +62,24 @@ function processFromScratch(
   // 1.5x 遲滯鎖相：防範逐步演化時因數值浮動導致全域相位突跳
   let prevModSq = 0;
   if (prevRefIdx < size) {
-    const pRe = scratchRe[prevRefIdx] ?? 0;
-    const pIm = scratchIm[prevRefIdx] ?? 0;
+    const pRe = scratchRe[prevRefIdx]!;
+    const pIm = scratchIm[prevRefIdx]!;
     prevModSq = pRe * pRe + pIm * pIm;
   }
 
   const shouldSwitch = prevModSq < 1e-6 || bestModSq > prevModSq * 1.5;
   const refIdx = shouldSwitch ? bestIdx : prevRefIdx;
 
-  const refRe = scratchRe[refIdx] ?? 0;
-  const refIm = scratchIm[refIdx] ?? 0;
+  const refRe = scratchRe[refIdx]!;
+  const refIm = scratchIm[refIdx]!;
   const refPhase = Math.atan2(refIm, refRe);
   const cos = Math.cos(-refPhase);
   const sin = Math.sin(-refPhase);
 
   const processed: ComplexAmplitude[] = new Array(size);
   for (let i = 0; i < size; i++) {
-    const re = scratchRe[i] ?? 0;
-    const im = scratchIm[i] ?? 0;
+    const re = scratchRe[i]!;
+    const im = scratchIm[i]!;
     const normRe = re * cos - im * sin;
     const normIm = re * sin + im * cos;
     const mod = Math.sqrt(normRe * normRe + normIm * normIm);
@@ -96,26 +107,25 @@ function executeUnitaryInScratch(
   qubitCount: number
 ): void {
   const size = 1 << qubitCount;
-  const q = targets[0] ?? 0; // 🌟 修復 TS2532：防禦陣列無目標
+  const q = targets[0]!; 
   const bitMask = 1 << (qubitCount - 1 - q);
   const step = bitMask << 1;
 
   if (gate === 'H') {
-    const invSqrt2 = 1 / Math.SQRT2;
     for (let i = 0; i < size; i += step) {
       for (let j = 0; j < bitMask; j++) {
         const i0 = i + j;
         const i1 = i0 + bitMask;
 
-        const a0Re = scratchRe[i0] ?? 0;
-        const a0Im = scratchIm[i0] ?? 0;
-        const a1Re = scratchRe[i1] ?? 0;
-        const a1Im = scratchIm[i1] ?? 0;
+        const a0Re = scratchRe[i0]!;
+        const a0Im = scratchIm[i0]!;
+        const a1Re = scratchRe[i1]!;
+        const a1Im = scratchIm[i1]!;
 
-        scratchRe[i0] = (a0Re + a1Re) * invSqrt2;
-        scratchIm[i0] = (a0Im + a1Im) * invSqrt2;
-        scratchRe[i1] = (a0Re - a1Re) * invSqrt2;
-        scratchIm[i1] = (a0Im - a1Im) * invSqrt2;
+        scratchRe[i0] = (a0Re + a1Re) * INV_SQRT2;
+        scratchIm[i0] = (a0Im + a1Im) * INV_SQRT2;
+        scratchRe[i1] = (a0Re - a1Re) * INV_SQRT2;
+        scratchIm[i1] = (a0Im - a1Im) * INV_SQRT2;
       }
     }
   } else if (gate === 'X') {
@@ -124,10 +134,10 @@ function executeUnitaryInScratch(
         const i0 = i + j;
         const i1 = i0 + bitMask;
 
-        const tmpRe = scratchRe[i0] ?? 0;
-        const tmpIm = scratchIm[i0] ?? 0;
-        scratchRe[i0] = scratchRe[i1] ?? 0;
-        scratchIm[i0] = scratchIm[i1] ?? 0;
+        const tmpRe = scratchRe[i0]!;
+        const tmpIm = scratchIm[i0]!;
+        scratchRe[i0] = scratchRe[i1]!;
+        scratchIm[i0] = scratchIm[i1]!;
         scratchRe[i1] = tmpRe;
         scratchIm[i1] = tmpIm;
       }
@@ -136,32 +146,25 @@ function executeUnitaryInScratch(
     for (let i = 0; i < size; i += step) {
       for (let j = 0; j < bitMask; j++) {
         const i1 = i + j + bitMask;
-        const re1 = scratchRe[i1] ?? 0;
-        const im1 = scratchIm[i1] ?? 0;
-        scratchRe[i1] = -re1;
-        scratchIm[i1] = -im1;
+        scratchRe[i1] = -scratchRe[i1]!;
+        scratchIm[i1] = -scratchIm[i1]!;
       }
     }
   } else if (gate === 'CNOT') {
-    if (targets.length !== 2) {
-      if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
-        console.warn(`[Quantum Engine] CNOT requires exactly 2 targets, got ${targets.length}`);
-      }
-      return;
-    }
+    if (targets.length !== 2) return;
 
-    const ctrl = targets[0] ?? 0;
-    const tgt = targets[1] ?? 0;
+    const ctrl = targets[0]!;
+    const tgt = targets[1]!;
     const ctrlMask = 1 << (qubitCount - 1 - ctrl);
     const tgtMask = 1 << (qubitCount - 1 - tgt);
 
     for (let i = 0; i < size; i++) {
       if ((i & ctrlMask) !== 0 && (i & tgtMask) === 0) {
         const i1 = i | tgtMask;
-        const tmpRe = scratchRe[i] ?? 0;
-        const tmpIm = scratchIm[i] ?? 0;
-        scratchRe[i] = scratchRe[i1] ?? 0;
-        scratchIm[i] = scratchIm[i1] ?? 0;
+        const tmpRe = scratchRe[i]!;
+        const tmpIm = scratchIm[i]!;
+        scratchRe[i] = scratchRe[i1]!;
+        scratchIm[i] = scratchIm[i1]!;
         scratchRe[i1] = tmpRe;
         scratchIm[i1] = tmpIm;
       }
@@ -200,8 +203,8 @@ export function applyPhaseGate(
   for (let i = 0; i < size; i += step) {
     for (let j = 0; j < bitMask; j++) {
       const i1 = i + j + bitMask;
-      const re = scratchRe[i1] ?? 0;
-      const im = scratchIm[i1] ?? 0;
+      const re = scratchRe[i1]!;
+      const im = scratchIm[i1]!;
       scratchRe[i1] = re * cosPhi - im * sinPhi;
       scratchIm[i1] = re * sinPhi + im * cosPhi;
     }
@@ -212,15 +215,15 @@ export function applyPhaseGate(
 
 /**
  * 嚴格計算 2-Qubit 糾纏度 (Wootters' Concurrence):
- * 🌟 修復 TS18048：保證 a00, a01, a10, a11 安全解構
  */
 export function calculateConcurrence(amplitudes: ReadonlyArray<RawComplex>): number {
   if (amplitudes.length !== 4) return 0;
 
-  const a00 = amplitudes[0] ?? { re: 0, im: 0 };
-  const a01 = amplitudes[1] ?? { re: 0, im: 0 };
-  const a10 = amplitudes[2] ?? { re: 0, im: 0 };
-  const a11 = amplitudes[3] ?? { re: 0, im: 0 };
+  // 🌟 優化 3：既然已確認 length 為 4，直接用 ! 取值，消滅 {re:0, im:0} 的 GC 垃圾
+  const a00 = amplitudes[0]!;
+  const a01 = amplitudes[1]!;
+  const a10 = amplitudes[2]!;
+  const a11 = amplitudes[3]!;
 
   const z1Re = a00.re * a11.re - a00.im * a11.im;
   const z1Im = a00.re * a11.im + a00.im * a11.re;
@@ -237,7 +240,6 @@ export function calculateConcurrence(amplitudes: ReadonlyArray<RawComplex>): num
 
 /**
  * 純函數量子全域投影測量 (Projective Measurement):
- * 🌟 修復 TS18048 / TS2532
  */
 export function measureCollapsePure(
   state: ReadonlyArray<RawComplex>,
@@ -249,7 +251,6 @@ export function measureCollapsePure(
   refIdx: number;
 } {
   const size = 1 << qubitCount;
-  const probabilities = new Float64Array(size);
   let totalProb = 0;
 
   for (let i = 0; i < size; i++) {
@@ -257,7 +258,8 @@ export function measureCollapsePure(
     const re = c ? c.re : 0;
     const im = c ? c.im : 0;
     const p = re * re + im * im;
-    probabilities[i] = p;
+    // 🌟 優化 2：寫入預分配的陣列，達成 Zero-GC
+    scratchProb[i] = p;
     totalProb += p;
   }
 
@@ -266,7 +268,7 @@ export function measureCollapsePure(
   let collapsedIndex = size - 1;
 
   for (let i = 0; i < size; i++) {
-    accumulated += probabilities[i] ?? 0;
+    accumulated += scratchProb[i]!;
     if (dice <= accumulated) {
       collapsedIndex = i;
       break;
