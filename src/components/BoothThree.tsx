@@ -1,5 +1,5 @@
 // src/components/BoothThree.tsx
-import { Suspense } from 'react';
+import { Suspense, useMemo } from 'react';
 import { Text, RoundedBox } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
 import * as THREE from 'three';
@@ -17,10 +17,11 @@ const POSITIONS: [number, number, number][] = [
 interface PillarProps {
   position: [number, number, number];
   amplitude: TensorAmplitude;
-  isEntangled: boolean;
+  geometry: THREE.CylinderGeometry;
+  material: THREE.Material;
 }
 
-const Pillar = ({ position, amplitude, isEntangled }: PillarProps) => {
+const Pillar = ({ position, amplitude, geometry, material }: PillarProps) => {
   const { scaleY } = useSpring({
     scaleY: Math.max(amplitude.modulus, 0.01),
     config: { mass: 1, tension: 200, friction: 22 },
@@ -28,19 +29,8 @@ const Pillar = ({ position, amplitude, isEntangled }: PillarProps) => {
 
   return (
     <group position={[position[0], 0, position[2]]}>
-      {/* 機率能量柱 */}
-      <a.mesh position-y={scaleY.to((s: number) => (s * 3) / 2)} scale-y={scaleY}>
-        <cylinderGeometry args={[0.5, 0.5, 3, 32]} />
-        <meshStandardMaterial 
-          color={isEntangled ? "#a855f7" : "#38bdf8"} 
-          emissive={isEntangled ? "#a855f7" : "#38bdf8"}
-          emissiveIntensity={0.6}
-          transparent 
-          opacity={0.85} 
-          roughness={0.3} 
-          metalness={0.1} 
-        />
-      </a.mesh>
+      {/* 🌟 優化 1：得益於 Pivot Trick，現在只需要修改 scale-y 即可完美長高 */}
+      <a.mesh geometry={geometry} material={material} scale-y={scaleY} />
 
       {/* 標籤移至柱頂 y=3.5，取消旋轉使其直視相機 */}
       <group position={[0, 3.5, 0]}>
@@ -63,42 +53,61 @@ const Pillar = ({ position, amplitude, isEntangled }: PillarProps) => {
 export const BoothThree = () => {
   const amplitudes = useTensorStore((s) => s.amplitudes);
   const isEntangled = useTensorStore((s) => s.isEntangled);
-  
+
+  // 🌟 優化 2：Zero-GC 預分配記憶體，所有柱子與軌道共用同一份資源
+  const { baseMat, normalMat, entangledMat, trackMat, pillarGeo, trackGeo } = useMemo(() => {
+    // 將高為 3 的圓柱體原點下移 1.5（移至底部）
+    const cyl = new THREE.CylinderGeometry(0.5, 0.5, 3, 32);
+    cyl.translate(0, 1.5, 0);
+
+    return {
+      pillarGeo: cyl,
+      trackGeo: new THREE.PlaneGeometry(6.5, 0.2),
+      
+      baseMat: new THREE.MeshStandardMaterial({ color: '#0f172a', roughness: 0.7, metalness: 0.3 }),
+      
+      normalMat: new THREE.MeshStandardMaterial({ 
+        color: '#38bdf8', emissive: '#38bdf8', emissiveIntensity: 0.6, 
+        transparent: true, opacity: 0.85, roughness: 0.3, metalness: 0.1 
+      }),
+      
+      entangledMat: new THREE.MeshStandardMaterial({ 
+        color: '#a855f7', emissive: '#a855f7', emissiveIntensity: 0.6, 
+        transparent: true, opacity: 0.85, roughness: 0.3, metalness: 0.1 
+      }),
+      
+      trackMat: new THREE.MeshBasicMaterial({ 
+        color: '#a855f7', transparent: true, opacity: 0.3, 
+        blending: THREE.AdditiveBlending, depthWrite: false 
+      }),
+    };
+  }, []);
+
   return (
     <group position={[0, -1, 0]}>
       {/* 展台底座永遠顯示 */}
       <RoundedBox args={[8, 0.8, 6]} radius={0.1} smoothness={4} position={[0, -0.4, 0]}>
-        <meshStandardMaterial color="#0f172a" roughness={0.7} metalness={0.3} />
+        <primitive object={baseMat} attach="material" />
       </RoundedBox>
 
       {/* 貝爾態對角線發光軌道 */}
       {isEntangled && (
-        <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0.6435]}>
-          <planeGeometry args={[6.5, 0.2]} />
-          <meshBasicMaterial 
-            color="#a855f7" 
-            transparent 
-            opacity={0.3} 
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-          />
-        </mesh>
+        <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0.6435]} geometry={trackGeo} material={trackMat} />
       )}
 
-      {/* 🌟 核心修復：防禦性渲染 (Defensive Rendering) */}
+      {/* 防禦性渲染 (Defensive Rendering) */}
       {POSITIONS.map((pos, i) => {
-        // 從 amplitudes 陣列安全取值
         const amp = amplitudes[i];
-        
-        // 若因為任何原因 (如 Store 初始化過慢) 導致該索引不存在，則安全跳過，避免破壞整個 React 渲染樹
         if (!amp) return null;
 
         return (
           <Pillar 
             key={i} 
             position={pos} 
-            amplitude={amp} 
-            isEntangled={isEntangled}
+            amplitude={amp}
+            geometry={pillarGeo}
+            // 🌟 優化 3：直接進行記憶體參照的替換，不產生新的 GC
+            material={isEntangled ? entangledMat : normalMat}
           />
         );
       })}
