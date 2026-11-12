@@ -34,8 +34,6 @@ function BoothFallback() {
   );
 }
 
-// 🌟 優化 1：抽離展台切換按鈕組件 (DRY)
-// 避免重複的 className 邏輯，讓 Header 更加乾淨易讀
 const BoothTab = ({ 
   label, 
   isActive, 
@@ -70,16 +68,13 @@ export default function App() {
   const [activeBooth, setActiveBooth] = useState<'one' | 'two' | 'three'>('one');
   const [isExplaining, setIsExplaining] = useState(false);
   
-  // 🌟 只需要 t，不需要 locale
-  const t = useLocaleStore((s) => s.t);
+  // 🌟 修正 TS6133：移除未使用的 `t`，僅保留 locale
   const locale = useLocaleStore((s) => s.locale);
 
   const resetBoothOne = useQuantumStore((s) => s.resetBoothOne);
   const resetBoothTwo = useQuantumStore((s) => s.resetBoothTwo);
   const resetTensor = useTensorStore((s) => s.reset);
 
-  // 🌟 優化 2：修正初始化依賴，避免不必要的重新渲染
-  // 只在初次掛載時重置展台一
   useEffect(() => {
     resetBoothOne();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,8 +99,8 @@ export default function App() {
 
     setIsExplaining(false);
     
-    // 🌟 優化 3：切換展台時加入音效回饋
-    sound.playClick?.() || sound.playLever(); 
+    // 🌟 修正 TS2551：soundEngine 中並沒有 playClick 方法，改用真實存在的 playLever
+    sound.playLever(); 
 
     if (booth === 'one') {
       resetBoothOne();
@@ -128,7 +123,6 @@ export default function App() {
           </div>
           <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
             <LanguageToggle />
-            {/* 🌟 套用重構後的 BoothTab 組件 */}
             <BoothTab 
               label={locale === 'zh' ? '展台 1' : 'Booth 1'} 
               isActive={activeBooth === 'one'} 
