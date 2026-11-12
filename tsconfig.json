@@ -1,8 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    /* 🌟 1. 現代化目標平台 (Modern Engine Target) */
+    "target": "ES2022", // 解鎖 ES2022 現代語法 (如 Array.prototype.at() 與 Top-level await)
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022", 
+      "DOM", 
+      "DOM.Iterable",
+      "WebWorker" // 🌟 注入 WebWorker 支援：讓 TypeScript 完美辨識 PWA Service Worker 與 R3F 背景運算 API
+    ],
+    
+    /* 🌟 2. 模組解析與生態相容 (Module Resolution) */
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -11,10 +19,19 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "esModuleInterop": true, // 🌟 解決部分舊版 CommonJS 套件與 ESM 的匯入相容性，防止 import 報錯
+
+    /* 🌟 3. 企業級極致型別防禦 (Ultra Strict Mode) */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true, // 🌟 防堵遺漏：確保函式內所有 if/else 條件分支都有明確的 return 值
+    "noUncheckedIndexedAccess": true, // 🌟 量子陣列防護：從陣列 (如 stats[idx]) 取值時，強制推論為 T | undefined，迫使開發者處理越界錯誤
+    "forceConsistentCasingInFileNames": true // 🌟 CI/CD 救星：強制檔名大小寫一致，避免 Mac 開發正常，推上 GitHub Actions 卻因大小寫報錯的慘劇
   },
-  "include": ["src", "vite.config.ts"]
+  "include": [
+    "src", 
+    "vite.config.ts"
+  ]
 }
