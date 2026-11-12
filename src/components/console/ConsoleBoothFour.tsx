@@ -4,7 +4,8 @@ import { useLocaleStore } from '../../store/localeStore';
 import { sound } from '../../audio/soundEngine';
 
 const BIT_LABELS = ['00', '01', '10', '11'];
-const CORRECTION_GATES = ['I (None)', 'Z Gate', 'X Gate', 'XZ Gates'];
+// 🌟 優化 1：物理邏輯修正。標準隱形傳態中，01 對應 X 閘，10 對應 Z 閘
+const CORRECTION_GATES = ['I (None)', 'X Gate', 'Z Gate', 'XZ Gates']; 
 
 export const ConsoleBoothFour = () => {
   const { 
@@ -46,14 +47,15 @@ export const ConsoleBoothFour = () => {
                   <span>θ (Latitude)</span>
                   <span className="text-sky-400">{(aliceTheta / Math.PI).toFixed(2)}π</span>
                 </label>
-                <input type="range" min="0" max="100" value={(aliceTheta / Math.PI) * 100} onChange={(e) => handleThetaChange(e.target.value)} className="accent-sky-500" />
+                {/* 🌟 優化 3：加上 Math.round 確保 Range 接收整數，杜絕浮點數警告與效能消耗 */}
+                <input type="range" min="0" max="100" value={Math.round((aliceTheta / Math.PI) * 100)} onChange={(e) => handleThetaChange(e.target.value)} className="accent-sky-500" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-mono text-slate-400 flex justify-between">
                   <span>φ (Longitude)</span>
                   <span className="text-sky-400">{(alicePhi / Math.PI).toFixed(2)}π</span>
                 </label>
-                <input type="range" min="0" max="100" value={(alicePhi / (2 * Math.PI)) * 100} onChange={(e) => handlePhiChange(e.target.value)} className="accent-sky-500" />
+                <input type="range" min="0" max="100" value={Math.round((alicePhi / (2 * Math.PI)) * 100)} onChange={(e) => handlePhiChange(e.target.value)} className="accent-sky-500" />
               </div>
             </div>
             <button
@@ -87,10 +89,11 @@ export const ConsoleBoothFour = () => {
         {/* ========================================== */}
         {/* 階段 3: Correct (Bob 條件修正) */}
         {/* ========================================== */}
-        {phase === 'correct' && (
+        {/* 🌟 優化 2：加入 classicalBits !== null 守衛，消滅底下的 classicalBits! 非空斷言 */}
+        {phase === 'correct' && classicalBits !== null && (
           <div className="flex flex-col h-full justify-center">
             <p className="text-[10px] text-amber-400 mb-2 text-center animate-pulse">
-              {locale === 'zh' ? `Bob 收到了經典訊息 [ ${BIT_LABELS[classicalBits!]} ]，請選擇對應的修正閘：` : `Bob received [ ${BIT_LABELS[classicalBits!]} ]. Select correction:`}
+              {locale === 'zh' ? `Bob 收到了經典訊息 [ ${BIT_LABELS[classicalBits]} ]，請選擇對應的修正閘：` : `Bob received [ ${BIT_LABELS[classicalBits]} ]. Select correction:`}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {[0, 1, 2, 3].map((bits) => (
