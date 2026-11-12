@@ -5,6 +5,13 @@ import { TensorEngine, GATES, TensorAmplitude } from '../quantum/tensorEngine';
 // 全域 ID 計數器，用於攔截與取消異步抽樣迴圈
 let sampleIdCounter = 0; 
 
+// 🌟 優化 1：提取全域單一實例，杜絕初始化時的「雙重 new」記憶體浪費
+const initEngine = new TensorEngine(2);
+
+// 🌟 優化 2：預分配 Zero-GC 快取池，杜絕 sample20x 內的反覆 new Float64Array
+const snapshotBuffer = new Float64Array(initEngine.stateSize * 2);
+let snapshotRefIdx = 0;
+
 interface TensorState {
   engine: TensorEngine;
   amplitudes: TensorAmplitude[];
@@ -19,8 +26,8 @@ interface TensorState {
 }
 
 export const useTensorStore = create<TensorState>((set, get) => ({
-  engine: new TensorEngine(2),
-  amplitudes: new TensorEngine(2).getAmplitudes(),
+  engine: initEngine,
+  amplitudes: initEngine.getAmplitudes(),
   isEntangled: false,
   sampleHistory: [],
   isSampling: false,
@@ -29,8 +36,7 @@ export const useTensorStore = create<TensorState>((set, get) => ({
     const { engine, isSampling } = get();
     if (isSampling) return;
     
-    // 🌟 核心修復：防禦性存取 (TS2345)
-    // 確保從 GATES 取出的矩陣絕對不是 undefined
+    // 確保從 GATES 取出的矩陣絕對不是 undefined (TS2345)
     const hGate = GATES.H;
     if (!hGate) return;
     
@@ -46,6 +52,7 @@ export const useTensorStore = create<TensorState>((set, get) => ({
   applyCNOT: (c, t) => {
     const { engine, isSampling } = get();
     if (isSampling) return;
+    
     engine.applyCNOT(c, t);
     set({
       amplitudes: engine.getAmplitudes(),
@@ -62,22 +69,24 @@ export const useTensorStore = create<TensorState>((set, get) => ({
     const currentSampleId = ++sampleIdCounter; 
     set({ isSampling: true, sampleHistory: [] });
     
-    // 不只要備份 state，還必須備份鎖相基準 refIdx
-    const originalState = new Float64Array(engine.state);
-    const originalRefIdx = engine.refIdx;
+    // 🌟 Zero-GC 快照：將狀態寫入預先分配好的全域緩衝區，杜絕記憶體碎片
+    snapshotBuffer.set(engine.state);
+    snapshotRefIdx = engine.refIdx;
     
     const history: number[] = [];
     for (let i = 0; i < 20; i++) {
       // 每次迭代檢查任務是否已被中斷
       if (currentSampleId !== sampleIdCounter) return;
       
-      // 每次抽樣前恢復波函數
-      engine.state.set(originalState); 
+      // 🌟 極速回滾：從 Buffer 還原波函數
+      engine.state.set(snapshotBuffer); 
+      engine.refIdx = snapshotRefIdx; // 同步還原相位基準
+
       const result = engine.collapse();
       history.push(result);
       
-      // 更新 UI 呈現單次坍縮瞬間，並等待 150ms 產生「連續打點」的視覺回饋
-      set({ amplitudes: engine.getAmplitudes(), sampleHistory: [...history] });
+      // 更新 UI 呈現單次坍縮瞬間，使用 slice() 回傳新陣列觸發 React 渲染
+      set({ amplitudes: engine.getAmplitudes(), sampleHistory: history.slice() });
       await new Promise(resolve => setTimeout(resolve, 150));
     }
     
@@ -85,8 +94,8 @@ export const useTensorStore = create<TensorState>((set, get) => ({
     if (currentSampleId !== sampleIdCounter) return;
     
     // 抽樣結束，完整恢復波函數與基準相位，防止下次運算鎖相漂移
-    engine.state.set(originalState);
-    engine.refIdx = originalRefIdx;
+    engine.state.set(snapshotBuffer);
+    engine.refIdx = snapshotRefIdx;
     set({ amplitudes: engine.getAmplitudes(), isSampling: false });
   },
 
