@@ -1,5 +1,5 @@
 // src/components/console/ConsoleBoothThree.tsx
-import { useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useTensorStore } from '../../store/tensorStore';
 import { useLocaleStore } from '../../store/localeStore';
 import { sound } from '../../audio/soundEngine';
@@ -17,30 +17,30 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
   const t = useLocaleStore((s) => s.t);
   const locale = useLocaleStore((s) => s.locale);
 
-  const stats = [0, 0, 0, 0];
-
-  // 🌟 修復 TS2532 (Line 26)：先讀取並收窄型別，避免直接對 number | undefined 執行 ++
-  sampleHistory.forEach((idx) => {
-    const current = stats[idx];
-    if (current !== undefined) {
-      stats[idx] = current + 1;
+  // 🌟 優化 1：使用 useMemo 封裝衍生狀態，確保渲染函數的純粹性，避免重複計算
+  const stats = useMemo(() => {
+    const counts = [0, 0, 0, 0];
+    for (let i = 0; i < sampleHistory.length; i++) {
+      const idx = sampleHistory[i];
+      if (idx !== undefined && idx >= 0 && idx < 4) {
+        counts[idx]++;
+      }
     }
-  });
+    return counts;
+  }, [sampleHistory]);
 
   const historyLen = sampleHistory.length;
 
+  // 🌟 優化 2：精簡 useEffect 音效邏輯
+  // (註：最理想的做法是將音效移至 tensorStore 的 sample20x 迴圈內，但若受限架構，此寫法已達最佳安全極限)
   useEffect(() => {
-    if (historyLen > 0 && historyLen <= 20) {
+    if (historyLen > 0 && historyLen < 20) {
       sound.playTick(historyLen - 1);
-    }
-
-    if (historyLen === 20) {
+    } else if (historyLen === 20) {
+      sound.playTick(19); // 補齊最後一下滴答聲
       const timer = setTimeout(() => sound.playVictoryChord(), 150);
       return () => clearTimeout(timer);
     }
-
-    return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyLen]);
 
   return (
