@@ -3,7 +3,6 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-// 🌟 全域零延遲生成「柔光圓形粒子」材質
 const PARTICLE_TEXTURE = (() => {
   if (typeof document === 'undefined') return null;
   const canvas = document.createElement('canvas');
@@ -23,7 +22,6 @@ const PARTICLE_TEXTURE = (() => {
 export function QuantumField({ count = 500 }: { count?: number }) {
   const pointsRef = useRef<THREE.Points>(null);
 
-  // 儲存 originalY 基準數組，避免累積累加造成的長期漂移
   const [positions, originalY, phases] = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const origY = new Float32Array(count);
@@ -44,33 +42,33 @@ export function QuantumField({ count = 500 }: { count?: number }) {
     if (!pointsRef.current) return;
     const t = state.clock.getElapsedTime();
     
-    // 背景緩慢自轉
     pointsRef.current.rotation.y = t * 0.015;
 
-    // 🌟 核心修復 1：屬性守衛 (Attribute Guard)
-    // 確保 position 屬性存在，消滅 TS18048
     const posAttr = pointsRef.current.geometry.attributes.position;
     if (!posAttr) return; 
 
     const array = posAttr.array as Float32Array;
 
-    // 🌟 核心修復 2：防禦性陣列存取 (Defensive Array Access)
-    // 錨定原始 Y 坐標進行正弦微動，消滅 TS2532
-    for (let i = 0; i < count; i++) {
-      const idx = i * 3 + 1;
-      
-      const baseY = originalY[i] ?? 0;
-      const phase = phases[i] ?? 0;
+    // 🌟 優化 1：提取不變量，省下迴圈內的重複乘法
+    const timeOffset = t * 1.4;
 
-      array[idx] = baseY + Math.sin(t * 1.4 + phase) * 0.12;
+    // 🌟 優化 2：消滅 ?? 分支。Float32Array 內必定有值，用 ! 滿足 TS 即可
+    for (let i = 0; i < count; i++) {
+      array[i * 3 + 1] = originalY[i]! + Math.sin(timeOffset + phases[i]!) * 0.12;
     }
+    
     posAttr.needsUpdate = true;
   });
 
   return (
     <points ref={pointsRef}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        {/* 🌟 優化 3：明確標示 DynamicDrawUsage，提升 WebGL CPU->GPU 資料傳輸效能 */}
+        <bufferAttribute 
+          attach="attributes-position" 
+          args={[positions, 3]} 
+          usage={THREE.DynamicDrawUsage} 
+        />
       </bufferGeometry>
       <pointsMaterial
         size={0.16} 
