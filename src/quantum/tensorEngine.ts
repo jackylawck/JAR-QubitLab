@@ -6,7 +6,6 @@
  */
 import { QUANTUM_CONFIG } from '../constants';
 
-// 2x2 酉矩陣，一維交錯複數：[Re00, Im00, Re01, Im01, Re10, Im10, Re11, Im11]
 export type QuantumGate = [number, number, number, number, number, number, number, number];
 
 const INV_SQRT2 = 1 / Math.SQRT2;
@@ -50,21 +49,17 @@ export class TensorEngine {
     this.refIdx = 0;
   }
 
-  // 🌟 Big-Endian：q0 對應最左位，與 engine.ts 的 executeUnitaryMatrix 一致
   private bitMask(targetQubit: number): number {
     return 1 << (this.numQubits - 1 - targetQubit);
   }
 
-  /**
-   * 🌟 1.5x 遲滯全局鎖相（移植自 engine.ts 的 processStateVector）
-   * 每次狀態變更後調用，消除純全局相位造成的視覺抖動。
-   */
   private lockGlobalPhase(prevRefIdx: number): void {
     let bestIdx = 0;
     let bestModSq = -1;
     for (let i = 0; i < this.stateSize; i++) {
-      const r = this.state[i * 2];
-      const im = this.state[i * 2 + 1];
+      // 🌟 修復 TS2532：防禦陣列讀取
+      const r = this.state[i * 2] ?? 0;
+      const im = this.state[i * 2 + 1] ?? 0;
       const m = r * r + im * im;
       if (m > bestModSq + 1e-9) {
         bestModSq = m;
@@ -72,21 +67,21 @@ export class TensorEngine {
       }
     }
 
-    const prevR = this.state[prevRefIdx * 2];
-    const prevI = this.state[prevRefIdx * 2 + 1];
+    const prevR = this.state[prevRefIdx * 2] ?? 0;
+    const prevI = this.state[prevRefIdx * 2 + 1] ?? 0;
     const prevModSq = prevR * prevR + prevI * prevI;
     const shouldSwitch = prevModSq < 1e-6 || bestModSq > prevModSq * 1.5;
     const refIdx = shouldSwitch ? bestIdx : prevRefIdx;
 
-    const refR = this.state[refIdx * 2];
-    const refI = this.state[refIdx * 2 + 1];
+    const refR = this.state[refIdx * 2] ?? 0;
+    const refI = this.state[refIdx * 2 + 1] ?? 0;
     const refPhase = Math.atan2(refI, refR);
     const cos = Math.cos(-refPhase);
     const sin = Math.sin(-refPhase);
 
     for (let i = 0; i < this.stateSize; i++) {
-      const r = this.state[i * 2];
-      const im = this.state[i * 2 + 1];
+      const r = this.state[i * 2] ?? 0;
+      const im = this.state[i * 2 + 1] ?? 0;
       this.state[i * 2] = r * cos - im * sin;
       this.state[i * 2 + 1] = r * sin + im * cos;
     }
@@ -96,15 +91,15 @@ export class TensorEngine {
 
   public applyGate(gate: QuantumGate, targetQubit: number): void {
     const bit = this.bitMask(targetQubit);
-    const [m00r, m00i, m01r, m01i, m10r, m10i, m11r, m11i] = gate;
+    const [m00r = 0, m00i = 0, m01r = 0, m01i = 0, m10r = 0, m10i = 0, m11r = 0, m11i = 0] = gate; // 🌟 防禦解構
 
     for (let i = 0; i < this.stateSize; i++) {
       if ((i & bit) === 0) {
         const j = i | bit;
-        const r0 = this.state[i * 2];
-        const i0 = this.state[i * 2 + 1];
-        const r1 = this.state[j * 2];
-        const i1 = this.state[j * 2 + 1];
+        const r0 = this.state[i * 2] ?? 0;
+        const i0 = this.state[i * 2 + 1] ?? 0;
+        const r1 = this.state[j * 2] ?? 0;
+        const i1 = this.state[j * 2 + 1] ?? 0;
 
         this.state[i * 2]     = (m00r * r0 - m00i * i0) + (m01r * r1 - m01i * i1);
         this.state[i * 2 + 1] = (m00r * i0 + m00i * r0) + (m01r * i1 + m01i * r1);
@@ -116,10 +111,6 @@ export class TensorEngine {
     this.lockGlobalPhase(this.refIdx);
   }
 
-  /**
-   * 🌟 任意角連續相位門 P(φ) = diag(1, e^{iφ})
-   * 展台 2 的馬赫-曾德爾干涉儀核心，展台 3 也用於 Bell 態相位調整。
-   */
   public applyPhaseGate(phi: number, targetQubit: number): void {
     const bit = this.bitMask(targetQubit);
     const cos = Math.cos(phi);
@@ -127,8 +118,8 @@ export class TensorEngine {
 
     for (let i = 0; i < this.stateSize; i++) {
       if ((i & bit) !== 0) {
-        const r = this.state[i * 2];
-        const im = this.state[i * 2 + 1];
+        const r = this.state[i * 2] ?? 0;
+        const im = this.state[i * 2 + 1] ?? 0;
         this.state[i * 2]     = r * cos - im * sin;
         this.state[i * 2 + 1] = r * sin + im * cos;
       }
@@ -145,10 +136,10 @@ export class TensorEngine {
     for (let i = 0; i < this.stateSize; i++) {
       if ((i & ctrlBit) !== 0 && (i & tgtBit) === 0) {
         const j = i | tgtBit;
-        const tr = this.state[i * 2];
-        const ti = this.state[i * 2 + 1];
-        this.state[i * 2]     = this.state[j * 2];
-        this.state[i * 2 + 1] = this.state[j * 2 + 1];
+        const tr = this.state[i * 2] ?? 0;
+        const ti = this.state[i * 2 + 1] ?? 0;
+        this.state[i * 2]     = this.state[j * 2] ?? 0;
+        this.state[i * 2 + 1] = this.state[j * 2 + 1] ?? 0;
         this.state[j * 2]     = tr;
         this.state[j * 2 + 1] = ti;
       }
@@ -163,8 +154,8 @@ export class TensorEngine {
     let idx = 0;
 
     for (let i = 0; i < this.stateSize; i++) {
-      const r = this.state[i * 2];
-      const im = this.state[i * 2 + 1];
+      const r = this.state[i * 2] ?? 0;
+      const im = this.state[i * 2 + 1] ?? 0;
       cumulative += r * r + im * im;
       if (rand <= cumulative || i === this.stateSize - 1) {
         idx = i;
@@ -178,15 +169,11 @@ export class TensorEngine {
     return idx;
   }
 
-  /**
-   * 返回與 engine.ts 的 ComplexAmplitude 結構兼容的數組。
-   * BoothOne / BoothTwo 的 `amplitudes[0].modulus` 用法可直接沿用。
-   */
   public getAmplitudes(): TensorAmplitude[] {
     const results: TensorAmplitude[] = [];
     for (let i = 0; i < this.stateSize; i++) {
-      const re = this.state[i * 2];
-      const im = this.state[i * 2 + 1];
+      const re = this.state[i * 2] ?? 0;
+      const im = this.state[i * 2 + 1] ?? 0;
       const probability = re * re + im * im;
       const modulus = Math.sqrt(probability);
       let phase = Math.atan2(im, re);
@@ -205,13 +192,16 @@ export class TensorEngine {
     return results;
   }
 
-  /**
-   * 2-qubit concurrence: C = 2|a00·a11 − a01·a10|
-   * 用於展台 3 的「貝爾態解鎖」判定。
-   */
   public computeConcurrence(): number {
     if (this.numQubits !== 2) return 0;
-    const [a00, a01, a10, a11] = this.getAmplitudes();
+    const amps = this.getAmplitudes();
+    
+    // 🌟 核心修復：使用安全降級物件取代強制陣列解構 (消除 TS18048)
+    const a00 = amps[0] ?? { re: 0, im: 0 };
+    const a01 = amps[1] ?? { re: 0, im: 0 };
+    const a10 = amps[2] ?? { re: 0, im: 0 };
+    const a11 = amps[3] ?? { re: 0, im: 0 };
+    
     const re = a00.re * a11.re - a00.im * a11.im - (a01.re * a10.re - a01.im * a10.im);
     const im = a00.re * a11.im + a00.im * a11.re - (a01.re * a10.im + a01.im * a10.re);
     return 2 * Math.sqrt(re * re + im * im);
