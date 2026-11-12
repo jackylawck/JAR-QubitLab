@@ -29,7 +29,7 @@ export interface QuantumState {
   // 連續相位干涉專用 API (Sprint 2 展台 2)
   isSplit: boolean;
   phaseAngle: number;
-  _afterHSnapshot: ReadonlyArray<RawComplex> | null; // 🌟 極致優化：只快取 RawComplex，不存 ComplexAmplitude
+  _afterHSnapshot: ReadonlyArray<RawComplex> | null; 
   splitBoothTwo: () => void;
   setPhaseAngle: (angle: number) => void;
   collideBoothTwo: () => void;
@@ -98,13 +98,20 @@ export const useQuantumStore = create<QuantumState>((set, get) => ({
     set((state) => {
       const zero = initZeroState(state.qubitCount);
       const afterH = applyGatePure(zero.amplitudes, zero.refIdx, 'H', [0], state.qubitCount);
+      
+      // 🌟 優化 1：深拷貝快取，徹底杜絕物件參照污染 (Object Reference Contamination)
+      // 在嚴苛的 React 18 Concurrent Mode 甚至未來的 GC 週期中，
+      // 若 afterH.amplitudes 與 _afterHSnapshot 指向同一個記憶體位址，
+      // 可能導致後續在 setPhaseAngle 修改狀態時，原始快照被意外覆寫。
+      const snapshot: ReadonlyArray<RawComplex> = afterH.amplitudes.map(amp => ({ re: amp.re, im: amp.im }));
+
       return {
         isSplit: true,
         phaseAngle: 0,
         amplitudes: afterH.amplitudes,
         refIdx: afterH.refIdx,
         isMaximallyEntangled: false,
-        _afterHSnapshot: afterH.amplitudes, // 🌟 直接存 ComplexAmplitude[] 作為 RawComplex[]，型別安全且零 GC
+        _afterHSnapshot: snapshot, 
       };
     });
   },
