@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useTensorStore } from '../../store/tensorStore';
 import { useLocaleStore } from '../../store/localeStore';
-import { sound } from '../../audio/soundEngine'; 
+import { sound } from '../../audio/soundEngine';
 
 const BASIS_LABELS = ['|00⟩', '|01⟩', '|10⟩', '|11⟩'] as const;
 
@@ -13,35 +13,32 @@ interface ConsoleBoothThreeProps {
 
 export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoothThreeProps) => {
   const { applyH, applyCNOT, sample20x, reset, isSampling, isEntangled, sampleHistory, amplitudes } = useTensorStore();
-  
+
   const t = useLocaleStore((s) => s.t);
   const locale = useLocaleStore((s) => s.locale);
 
   const stats = [0, 0, 0, 0];
-  
-  // 🌟 核心修復 1：陣列越界防護 (TS2532)
-  // 確保 sampleHistory 內的 idx 值域介於 0~3 之間，避免修改未定義的索引
-  sampleHistory.forEach(idx => {
-    if (idx >= 0 && idx < stats.length) {
-      stats[idx]++;
+
+  // 🌟 修復 TS2532 (Line 26)：先讀取並收窄型別，避免直接對 number | undefined 執行 ++
+  sampleHistory.forEach((idx) => {
+    const current = stats[idx];
+    if (current !== undefined) {
+      stats[idx] = current + 1;
     }
   });
 
   const historyLen = sampleHistory.length;
 
-  // 🌟 核心修復 2：對齊 useEffect 的 Return Type (TS7030)
-  // 強制讓函式不管走哪一條路徑，最終都返回 void 或是 Cleanup Function
   useEffect(() => {
     if (historyLen > 0 && historyLen <= 20) {
       sound.playTick(historyLen - 1);
     }
-    
+
     if (historyLen === 20) {
       const timer = setTimeout(() => sound.playVictoryChord(), 150);
       return () => clearTimeout(timer);
     }
-    
-    // 顯式宣告空回傳，滿足 TypeScript 型別守衛
+
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyLen]);
@@ -61,7 +58,6 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
       </div>
 
       {!isExplaining ? (
-        // 操作面板模式
         <div className="grid grid-cols-3 gap-2 sm:gap-4 flex-1">
           <button
             onClick={() => { sound.playLever(); applyH(0); }}
@@ -73,7 +69,7 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
           </button>
 
           <button
-            onClick={() => { sound.playMerge(); applyCNOT(0, 1); }} 
+            onClick={() => { sound.playMerge(); applyCNOT(0, 1); }}
             disabled={isSampling}
             className="flex flex-col items-center justify-center bg-slate-900 border border-slate-700 rounded-xl hover:border-purple-500 hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50 relative overflow-hidden"
           >
@@ -94,7 +90,6 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
           </button>
         </div>
       ) : (
-        // 原理解析模式
         <div className="text-xs text-slate-300 leading-relaxed overflow-y-auto max-h-[140px] py-1 px-2 font-sans flex-1 border border-slate-800/60 rounded-xl bg-slate-900/40">
           <p>{t.boothThree.explanation}</p>
         </div>
@@ -104,29 +99,25 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
       {sampleHistory.length > 0 && !isExplaining && (
         <div className="mt-2 h-6 flex items-center justify-center gap-4 text-[10px] font-mono bg-slate-900/50 rounded border border-slate-800">
           <span className="text-amber-500">RESULT ({sampleHistory.length}/20):</span>
-          {stats.map((count, i) => {
-            // 🌟 核心修復 3：為唯讀陣列動態索引加上安全回退值 (TS2532)
-            const label = BASIS_LABELS[i] ?? '|??⟩';
-            return (
-              <span key={i} className={count > 0 ? 'text-slate-200' : 'text-slate-600'}>
-                {label}: {count}
-              </span>
-            );
-          })}
+          {stats.map((count, i) => (
+            <span key={i} className={count > 0 ? 'text-slate-200' : 'text-slate-600'}>
+              {BASIS_LABELS[i] ?? '|??⟩'}: {count}
+            </span>
+          ))}
         </div>
       )}
-      
+
       {/* 底部控制列 */}
       <div className="flex justify-between items-center mt-2 px-2">
-        <button 
+        <button
           onClick={() => setIsExplaining(!isExplaining)}
           className="text-[10px] text-sky-400 hover:text-sky-300 font-mono transition-colors active:scale-95"
         >
           [ {isExplaining ? (locale === 'zh' ? '關閉解析' : 'CLOSE THEORY') : (locale === 'zh' ? '原理解析' : 'THEORY')} ]
         </button>
-        <button 
-          onClick={() => { sound.playLever(); reset(); }} 
-          disabled={isSampling} 
+        <button
+          onClick={() => { sound.playLever(); reset(); }}
+          disabled={isSampling}
           className="text-[10px] text-slate-500 hover:text-white transition-colors font-mono disabled:opacity-30 active:scale-95"
         >
           [ RESET SYSTEM ]
