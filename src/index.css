@@ -2,11 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background-color: #030712;
+@layer base {
+  html, body, #root {
+    /* 🌟 優化 1：使用 @apply 整合 Tailwind 類別，確保色彩變數與設計系統一致 */
+    @apply w-full h-[100dvh] bg-gray-950 text-gray-100 overflow-hidden;
+    
+    /* 🌟 優化 2：行動端 3D 應用必備的「邊界防護」 */
+    overscroll-behavior: none; /* 徹底禁用 iOS/Android 的「下拉更新 (Pull-to-refresh)」與「邊界回彈」 */
+    touch-action: none; /* 禁用瀏覽器預設手勢，將平移/縮放權限 100% 交給 R3F OrbitControls */
+    -webkit-tap-highlight-color: transparent; /* 移除行動端點擊按鈕時的半透明灰色閃爍 */
+    
+    /* 🌟 優化 3：字體渲染優化，讓 3D 懸浮標籤與 UI 更加銳利 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
