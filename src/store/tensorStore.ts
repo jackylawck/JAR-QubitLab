@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { TensorEngine, GATES, TensorAmplitude } from '../quantum/tensorEngine';
 
-// 🌟 新增：全域 ID 計數器，用於攔截與取消異步抽樣迴圈
+// 全域 ID 計數器，用於攔截與取消異步抽樣迴圈
 let sampleIdCounter = 0; 
 
 interface TensorState {
@@ -28,7 +28,14 @@ export const useTensorStore = create<TensorState>((set, get) => ({
   applyH: (q) => {
     const { engine, isSampling } = get();
     if (isSampling) return;
-    engine.applyGate(GATES.H, q);
+    
+    // 🌟 核心修復：防禦性存取 (TS2345)
+    // 確保從 GATES 取出的矩陣絕對不是 undefined
+    const hGate = GATES.H;
+    if (!hGate) return;
+    
+    engine.applyGate(hGate, q);
+    
     set({
       amplitudes: engine.getAmplitudes(),
       isEntangled: engine.computeConcurrence() > 0.99,
@@ -51,17 +58,17 @@ export const useTensorStore = create<TensorState>((set, get) => ({
     const { engine, isSampling } = get();
     if (isSampling) return;
     
-    // 🌟 修正 1：鎖定當前抽樣任務的 ID
+    // 鎖定當前抽樣任務的 ID
     const currentSampleId = ++sampleIdCounter; 
     set({ isSampling: true, sampleHistory: [] });
     
-    // 🌟 修正 2：不只要備份 state，還必須備份鎖相基準 refIdx
+    // 不只要備份 state，還必須備份鎖相基準 refIdx
     const originalState = new Float64Array(engine.state);
     const originalRefIdx = engine.refIdx;
     
     const history: number[] = [];
     for (let i = 0; i < 20; i++) {
-      // 🌟 修正 3：每次迭代檢查任務是否已被中斷
+      // 每次迭代檢查任務是否已被中斷
       if (currentSampleId !== sampleIdCounter) return;
       
       // 每次抽樣前恢復波函數
@@ -77,14 +84,14 @@ export const useTensorStore = create<TensorState>((set, get) => ({
     // 迴圈結束後，最後確認是否被取消
     if (currentSampleId !== sampleIdCounter) return;
     
-    // 🌟 修正 4：抽樣結束，完整恢復波函數與基準相位，防止下次運算鎖相漂移
+    // 抽樣結束，完整恢復波函數與基準相位，防止下次運算鎖相漂移
     engine.state.set(originalState);
     engine.refIdx = originalRefIdx;
     set({ amplitudes: engine.getAmplitudes(), isSampling: false });
   },
 
   reset: () => {
-    // 🌟 修正 5：改變計數器，立即「剪斷」任何正在執行的 sample20x 迴圈
+    // 改變計數器，立即「剪斷」任何正在執行的 sample20x 迴圈
     sampleIdCounter++; 
     const { engine } = get();
     engine.reset();
