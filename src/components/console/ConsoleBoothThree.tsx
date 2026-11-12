@@ -104,11 +104,15 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
       {sampleHistory.length > 0 && !isExplaining && (
         <div className="mt-2 h-6 flex items-center justify-center gap-4 text-[10px] font-mono bg-slate-900/50 rounded border border-slate-800">
           <span className="text-amber-500">RESULT ({sampleHistory.length}/20):</span>
-          {stats.map((count, i) => (
-            <span key={i} className={count > 0 ? 'text-slate-200' : 'text-slate-600'}>
-              {BASIS_LABELS[i]}: {count}
-            </span>
-          ))}
+          {stats.map((count, i) => {
+            // 🌟 核心修復 3：為唯讀陣列動態索引加上安全回退值 (TS2532)
+            const label = BASIS_LABELS[i] ?? '|??⟩';
+            return (
+              <span key={i} className={count > 0 ? 'text-slate-200' : 'text-slate-600'}>
+                {label}: {count}
+              </span>
+            );
+          })}
         </div>
       )}
       
