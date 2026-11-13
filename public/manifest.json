@@ -1,25 +1,42 @@
 {
+  "id": "./",
   "name": "J.A.R. QubitLab | 量子微觀實驗室",
   "short_name": "QubitLab",
-  "description": "高保真 3D 量子力學互動沙盒與演化模擬器",
+  "description": "高保真 3D 量子力學互動實驗室：涵蓋疊加與坍縮、馬赫-曾德爾連續相位干涉、貝爾態量子糾纏與量子隱形傳態協議，純前端零追蹤。",
+  "lang": "zh-HK",
+  "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#030712",
   "theme_color": "#030712",
+  "categories": ["education", "science"],
   "icons": [
     {
       "src": "./JARQubitLab192icon.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./JARQubitLab192icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "./JARQubitLab512icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./JARQubitLab512icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
