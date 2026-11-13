@@ -2,7 +2,7 @@
 /*
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
- * Theme: EVA-01 (Purple #a855f7 & Cyan #22d3ee)
+ * Theme: EVA-01 (Purple #a855f7 & Neon Emerald-Cyan #10b981)
  */
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
@@ -27,7 +27,7 @@ const SHARED_MATERIALS = {
   leverStick: new THREE.MeshStandardMaterial({ color: '#8892b0', metalness: 0.8, roughness: 0.2 }),
   leverKnob: new THREE.MeshStandardMaterial({ color: '#a855f7', emissive: '#a855f7', emissiveIntensity: 0.6, metalness: 0.3, roughness: 0.4 }),
   shutterBase: new THREE.MeshStandardMaterial({ color: '#2f3542' }),
-  shutterButton: new THREE.MeshStandardMaterial({ color: '#22d3ee', emissive: '#22d3ee', emissiveIntensity: 0.6, metalness: 0.6, roughness: 0.2 }),
+  shutterButton: new THREE.MeshStandardMaterial({ color: '#10b981', emissive: '#10b981', emissiveIntensity: 0.7, metalness: 0.5, roughness: 0.2 }),
 };
 
 const useCursor = () => {
@@ -71,7 +71,7 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
       targetScale = modulus * 1.45;
       targetOpacity = 1.0;
     } else if (modulus > 0.1) {
-      // 疊加態 (modulus ≈ 0.707) 時維持高不透明度 0.88，避免背後黑底把紫光與青光吃暗
+      // 疊加態 (modulus ≈ 0.707) 時維持高不透明度 0.88，避免背後黑底把紫光與青綠光吃暗
       targetScale = modulus * 1.45;
       targetOpacity = 0.88;
     } else {
@@ -216,11 +216,11 @@ export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
         isCollapsing={isCollapsing}
       />
 
-      {/* 路徑 B：初號機螢光青 (#22d3ee) */}
+      {/* 路徑 B：初號機螢光青綠 (#10b981) */}
       <QubitCloud
         position={[2, 1.5, 0]}
         modulus={rightModulus}
-        baseColor="#22d3ee"
+        baseColor="#10b981"
         label={t.common.pathB}
         isCollapsing={isCollapsing}
       />
