@@ -166,10 +166,10 @@ export const initCyberpunkEasterEgg = (): void => {
       'color: #a855f7; font-weight: 900; font-size: 13px; font-family: monospace;'
     );
     print(
-      '%c  [展台 1] 疊加與測量坍縮       │ 初號機（EVA-01）覺醒' +
-        '  [展台 2] 馬赫-曾德爾相位干涉  │ 二號機（EVA-02）明日香' +
-        '  [展台 3] 雙量子位元糾纏       │ 初號機 vs 第13號機 最終對決' +
-        '  [展台 4] 量子隱形傳態         │ 零號機（EVA-00）與 MAGI 傳輸',
+      '%c  [展台 1] 疊加與測量坍縮       │ 初號機（EVA-01）覺醒          │ 裝甲紫 #a855f7 ＋ 螢光青綠 #10b981\n' +
+        '  [展台 2] 馬赫-曾德爾相位干涉  │ 二號機（EVA-02）明日香        │ 明日香紅 #dc2626 ＋ 亮黃 #facc15\n' +
+        '  [展台 3] 雙量子位元糾纏       │ 初號機 vs 第13號機 最終對決   │ 紫綠 #a855f7/#22c55e vs 紫藍緋紅 #6366f1/#e11d48\n' +
+        '  [展台 4] 量子隱形傳態         │ 零號機（EVA-00）與 MAGI 傳輸  │ 山吹橙 #f97316 ＋ 初期藍 #0ea5e9 ＋ 琥珀金 #fbbf24',
       'background: #090d16; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 11px; line-height: 1.7;'
     );
   };
