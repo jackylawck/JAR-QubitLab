@@ -55,8 +55,8 @@ const Pillar = ({
         dispose={null}
       />
 
-      {/* 3. 基底態標籤 */}
-      <group position={[0, 3.6, 0]}>
+      {/* 3. 基底態標籤 (高度提升至 4.2 避免前排標籤遮擋後排柱體) */}
+      <group position={[0, 4.2, 0]}>
         <Suspense fallback={null}>
           <Text
             fontSize={0.45}
