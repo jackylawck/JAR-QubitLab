@@ -5,17 +5,19 @@
  */
 import { ComplexAmplitude, GateName, RawComplex } from './types';
 
+// 最大支援 4 Qubits (16 種狀態)，目前專案最多用到 3 Qubits (Teleportation)
 const MAX_SCRATCH_SIZE = 16; 
 const scratchRe = new Float64Array(MAX_SCRATCH_SIZE);
 const scratchIm = new Float64Array(MAX_SCRATCH_SIZE);
-// 🌟 優化 2：預分配機率暫存區，消滅 measureCollapsePure 內的 GC
+
+// 預分配機率暫存區，消滅 measureCollapsePure 內的 GC
 const scratchProb = new Float64Array(MAX_SCRATCH_SIZE);
 
 const INV_SQRT2 = 1 / Math.SQRT2;
 
 /**
  * 將輸入狀態載入連續記憶體暫存區 
- * (使用 if 取代 三元運算子與 ??，對 V8 引擎的 JIT 最佳化更友善)
+ * (消除三元運算子，友善 V8 JIT 編譯器)
  */
 function loadStateToScratch(state: ReadonlyArray<RawComplex>, size: number): void {
   for (let i = 0; i < size; i++) {
@@ -48,7 +50,7 @@ function processFromScratch(
   let bestIdx = 0;
   let bestModSq = -1;
 
-  // 🌟 優化 1：使用 ! 取代 ?? 0，消滅 Type Guard 在迴圈內產生的運行時分支
+  // 使用 ! 取代 ?? 0，消滅 Type Guard 在迴圈內產生的運行時分支
   for (let i = 0; i < size; i++) {
     const re = scratchRe[i]!;
     const im = scratchIm[i]!;
@@ -219,7 +221,7 @@ export function applyPhaseGate(
 export function calculateConcurrence(amplitudes: ReadonlyArray<RawComplex>): number {
   if (amplitudes.length !== 4) return 0;
 
-  // 🌟 優化 3：既然已確認 length 為 4，直接用 ! 取值，消滅 {re:0, im:0} 的 GC 垃圾
+  // 已確認 length 為 4，直接用 ! 取值，消滅 {re:0, im:0} 的 GC 垃圾
   const a00 = amplitudes[0]!;
   const a01 = amplitudes[1]!;
   const a10 = amplitudes[2]!;
@@ -253,12 +255,13 @@ export function measureCollapsePure(
   const size = 1 << qubitCount;
   let totalProb = 0;
 
+  // 🌟 優化 2：消除三元運算子，減少分支預測開銷
   for (let i = 0; i < size; i++) {
-    const c = state[i];
-    const re = c ? c.re : 0;
-    const im = c ? c.im : 0;
+    const c = state[i]!;
+    const re = c.re;
+    const im = c.im;
     const p = re * re + im * im;
-    // 🌟 優化 2：寫入預分配的陣列，達成 Zero-GC
+    
     scratchProb[i] = p;
     totalProb += p;
   }
