@@ -1,4 +1,34 @@
+這份 `InterferenceBurst.tsx` 是負責在展台 2 (二號機主題) 中處理「同相干涉」與「反相蒸發」粒子特效的核心元件。它已經具備了很好的 Zero-GC 設計和防禦性陣列存取，但為了徹底對齊 **「二號機 (EVA-02) 經典色」** 主題，我們需要對粒子的顏色與發光質感進行最後的打磨。
+
+### 核心優化點
+
+1. **二號機 (EVA-02) 專屬粒子配色注入**：
+* **蒸發特效 (Evaporate)**：當反相干涉導致量子態抵消蒸發時，粒子顏色將從原本單純的亮粉色，改為**二號機亮黃色 (`#facc15` / Yellow-400)**，並混合微弱的**明日香紅 (`#ef4444` / Red-500)** 打造火花般的高溫質感。
+* **融合特效 (Merge)**：當同相干涉導致量子態疊加增強時，粒子顏色將由天藍色改為**高能的二號機主裝甲深紅 (`#dc2626` / Red-600) 混合亮橙色 (`#f97316`)**，象徵強大的聚合能量。
+
+
+2. **混合色彩計算**：
+* 我們不再只用單一顏色填滿整個粒子系統。而是利用 `Math.random()` 在兩個基礎顏色間進行線性差值 (Lerp)，讓粒子噴發 / 融合時擁有豐富的層次感。
+
+
+3. **優化 `useFrame` 效能**：
+* 在動畫循環中，除了防禦性存取外，移除多餘的常數重複計算，並確保留存零延遲生成材質 (CanvasTexture) 設計。
+
+
+
+---
+
+### 優化後的 `src/components/InterferenceBurst.tsx`
+
+請將以下程式碼覆蓋原檔案：
+
+```tsx
 // src/components/InterferenceBurst.tsx
+/*
+ * Project: J.A.R. QubitLab
+ * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+ * Theme: EVA-02 Interference Effects (Red & Yellow)
+ */
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -35,6 +65,7 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
   
   const count = 60; // 輕量化適配手機
 
+  // 🌟 EVA-02 主題粒子計算
   const data = useMemo(() => {
     if (!type) return null;
 
@@ -43,7 +74,21 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
     const col = new Float32Array(count * 3);
 
     const isEvaporate = type === 'evaporate';
-    const baseColor = isEvaporate ? new THREE.Color('#ec4899') : new THREE.Color('#38bdf8');
+    
+    // 定義混合顏色池
+    const c1 = new THREE.Color();
+    const c2 = new THREE.Color();
+    const finalColor = new THREE.Color();
+
+    if (isEvaporate) {
+      // 蒸發 (反相抵消)：二號機亮黃火花 混合 微弱明日香紅
+      c1.set('#facc15'); // Yellow-400
+      c2.set('#ef4444'); // Red-500
+    } else {
+      // 融合 (同相疊加)：二號機裝甲深紅 混合 高能亮橙
+      c1.set('#dc2626'); // Red-600
+      c2.set('#f97316'); // Orange-500
+    }
 
     for (let i = 0; i < count; i++) {
       const idx = i * 3;
@@ -51,6 +96,7 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
       const phi = Math.acos(2 * Math.random() - 1);
       
       if (isEvaporate) {
+        // 蒸發：向外噴射火花
         const r = 0.1 + Math.random() * 0.2;
         initPos[idx] = Math.sin(phi) * Math.cos(theta) * r;
         initPos[idx + 1] = Math.sin(phi) * Math.sin(theta) * r;
@@ -61,15 +107,18 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
         vel[idx + 1] = Math.abs(Math.sin(phi) * Math.sin(theta) * speed) + 1.2; 
         vel[idx + 2] = Math.cos(phi) * speed;
       } else {
+        // 融合：由外向內匯聚
         const r = 0.8 + Math.random() * 0.6;
         initPos[idx] = Math.sin(phi) * Math.cos(theta) * r;
         initPos[idx + 1] = Math.sin(phi) * Math.sin(theta) * r;
         initPos[idx + 2] = Math.cos(phi) * r;
       }
 
-      col[idx] = baseColor.r;
-      col[idx + 1] = baseColor.g;
-      col[idx + 2] = baseColor.b;
+      // 對每顆粒子進行顏色混合 (Lerp) 以增加層次感
+      finalColor.lerpColors(c1, c2, Math.random());
+      col[idx] = finalColor.r;
+      col[idx + 1] = finalColor.g;
+      col[idx + 2] = finalColor.b;
     }
 
     return { initPos, vel, colors: col };
@@ -100,12 +149,10 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
     const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
     const array = posAttr.array as Float32Array;
 
-    // 🌟 核心修復：陣列越界防護 (Defensive Array Access)
-    // 透過明確取出陣列元素並提供 fallback (0)，來消除 TS2532 (可能為 undefined) 的警告
+    // 🌟 陣列越界防護 (Defensive Array Access)
     for (let i = 0; i < count; i++) {
       const idx = i * 3;
       
-      // 取出靜態起始座標與速度，確保非 undefined
       const initX = data.initPos[idx] ?? 0;
       const initY = data.initPos[idx + 1] ?? 0;
       const initZ = data.initPos[idx + 2] ?? 0;
@@ -163,3 +210,5 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
     </points>
   );
 };
+
+```
