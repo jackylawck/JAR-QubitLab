@@ -3,13 +3,32 @@
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
 import { useQuantumStore } from '../store/quantumStore';
 import { useLocaleStore } from '../store/localeStore';
 import { sound } from '../audio/soundEngine';
 import { acquireAnimationLock } from '../hooks/useAnimationLock';
+
+// Zero-GC：靜態共用幾何體與材質，避免渲染迴圈中頻繁建立物件
+const SHARED_GEOMETRY = {
+  cloud: new THREE.SphereGeometry(1, 32, 32),
+  base: new THREE.BoxGeometry(8, 1, 4),
+  leverStick: new THREE.CylinderGeometry(0.2, 0.2, 1),
+  leverKnob: new THREE.SphereGeometry(0.4),
+  shutterBase: new THREE.CylinderGeometry(0.5, 0.6, 0.4),
+  shutterButton: new THREE.CylinderGeometry(0.3, 0.3, 0.1),
+};
+
+const SHARED_MATERIALS = {
+  base: new THREE.MeshStandardMaterial({ color: '#1a1a24', roughness: 0.7 }),
+  leverStick: new THREE.MeshStandardMaterial({ color: '#8892b0', metalness: 0.8, roughness: 0.2 }),
+  leverKnob: new THREE.MeshStandardMaterial({ color: '#a855f7', emissive: '#7e22ce', emissiveIntensity: 0.35, metalness: 0.3, roughness: 0.4 }),
+  shutterBase: new THREE.MeshStandardMaterial({ color: '#2f3542' }),
+  shutterButton: new THREE.MeshStandardMaterial({ color: '#22d3ee', emissive: '#0891b2', emissiveIntensity: 0.35, metalness: 0.6, roughness: 0.2 }),
+};
 
 const useCursor = () => {
   const [hovered, setHovered] = useState(false);
@@ -35,7 +54,7 @@ interface QubitCloudProps {
 
 const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: QubitCloudProps) => {
   const isWinner = modulus > 0.9;
-  
+
   let targetScale = 0.01;
   let targetOpacity = 0;
 
@@ -66,25 +85,33 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
     config: { mass: 1, tension: isCollapsing ? 300 : 170, friction: isCollapsing ? 15 : 26 },
   });
 
+  // 快取基礎顏色的 MeshStandardMaterial 實例，提升自發光強度以平衡紫光在暗背景的感知亮度
+  const cloudMaterial = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: baseColor,
+      emissive: baseColor,
+      emissiveIntensity: 0.75,
+      transparent: true,
+      roughness: 0.35,
+      metalness: 0.1,
+    });
+  }, [baseColor]);
+
+  // 組件卸載時釋放獨立生成的材質
+  useEffect(() => {
+    return () => {
+      cloudMaterial.dispose();
+    };
+  }, [cloudMaterial]);
+
   return (
-    // 🌟 關鍵修復：外層 group 不帶 scale，座標固定在 [x, y, z]
     <group position={position}>
-      {/* 縮放動畫只作用於 3D 網格本體 */}
-      <a.mesh scale={scale}>
-        <sphereGeometry args={[1, 32, 32]} />
-        <a.meshStandardMaterial
-          color={baseColor}
-          emissive={baseColor}
-          emissiveIntensity={0.6}
-          transparent
-          opacity={opacity}
-          roughness={0.4}
-          metalness={0.1}
-        />
+      <a.mesh scale={scale} geometry={SHARED_GEOMETRY.cloud} dispose={null}>
+        <a.primitive attach="material" object={cloudMaterial} opacity={opacity} dispose={null} />
       </a.mesh>
-      
-      {/* 🌟 Html 獨立於 scale 之外，永遠穩固錨定在基底正下方 -1.8，不受機率縮放影響 */}
-      <Html position={[0, -1.8, 0]} center style={{ pointerEvents: 'none' }}>
+
+      {/* 限制 zIndexRange 避免行動端 CSS 疊加破壞上層 UI */}
+      <Html position={[0, -1.8, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2.5 py-1 rounded-md border border-white/20 shadow-lg backdrop-blur-sm">
           {label}
         </div>
@@ -99,13 +126,13 @@ export interface BoothOneProps {
 
 export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
   const t = useLocaleStore((state) => state.t);
-  
+
   const amplitudes = useQuantumStore((s) => s.amplitudes);
   const applyGate = useQuantumStore((s) => s.applyGate);
   const collapse = useQuantumStore((s) => s.collapse);
 
   const [isCollapsing, setIsCollapsing] = useState(false);
-  
+
   const collapseTimerRef = useRef<number | null>(null);
   const actionTimerRef = useRef<number | null>(null);
   const lockReleaseRef = useRef<(() => void) | null>(null);
@@ -121,14 +148,8 @@ export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
   const prevProb = useRef({ p0, p1 });
 
   useEffect(() => {
-    return () => {
-      if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
-      if (actionTimerRef.current !== null) clearTimeout(actionTimerRef.current);
-      lockReleaseRef.current?.();
-    };
-  }, []);
+    let isMounted = true;
 
-  useEffect(() => {
     const wasMixed = prevProb.current.p0 > 0.1 && prevProb.current.p1 > 0.1;
     const isPure = p0 > 0.9 || p1 > 0.9;
 
@@ -136,11 +157,20 @@ export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
       setIsCollapsing(true);
       if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
       collapseTimerRef.current = window.setTimeout(() => {
-        setIsCollapsing(false);
-        collapseTimerRef.current = null;
+        if (isMounted) {
+          setIsCollapsing(false);
+          collapseTimerRef.current = null;
+        }
       }, 300);
     }
     prevProb.current = { p0, p1 };
+
+    return () => {
+      isMounted = false;
+      if (collapseTimerRef.current !== null) clearTimeout(collapseTimerRef.current);
+      if (actionTimerRef.current !== null) clearTimeout(actionTimerRef.current);
+      lockReleaseRef.current?.();
+    };
   }, [p0, p1]);
 
   const handleLeverClick = () => {
@@ -180,22 +210,27 @@ export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 10, 5]} intensity={1.5} />
 
-      <mesh position={[0, -0.5, 0]}>
-        <boxGeometry args={[8, 1, 4]} />
-        <meshStandardMaterial color="#1a1a24" roughness={0.7} />
-      </mesh>
+      <mesh
+        position={[0, -0.5, 0]}
+        geometry={SHARED_GEOMETRY.base}
+        material={SHARED_MATERIALS.base}
+        dispose={null}
+      />
 
+      {/* 路徑 A：初號機裝甲紫 (#a855f7) */}
       <QubitCloud
         position={[-2, 1.5, 0]}
         modulus={leftModulus}
-        baseColor="#3b82f6" 
+        baseColor="#a855f7"
         label={t.common.pathA}
         isCollapsing={isCollapsing}
       />
+
+      {/* 路徑 B：初號機螢光青 (#22d3ee) */}
       <QubitCloud
         position={[2, 1.5, 0]}
         modulus={rightModulus}
-        baseColor="#ef4444" 
+        baseColor="#22d3ee"
         label={t.common.pathB}
         isCollapsing={isCollapsing}
       />
@@ -203,15 +238,19 @@ export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
       {!pureVisual && (
         <>
           <group position={[0, 0, 1.5]} onClick={handleLeverClick} {...leverCursor}>
-            <mesh position={[0, 0.5, 0]}>
-              <cylinderGeometry args={[0.2, 0.2, 1]} />
-              <meshStandardMaterial color="#8892b0" metalness={0.8} roughness={0.2} />
-            </mesh>
-            <mesh position={[0, 1.1, 0]}>
-              <sphereGeometry args={[0.4]} />
-              <meshStandardMaterial color="#ff4757" metalness={0.3} roughness={0.4} />
-            </mesh>
-            <Html position={[0, -0.5, 0]} center style={{ pointerEvents: 'none' }}>
+            <mesh
+              position={[0, 0.5, 0]}
+              geometry={SHARED_GEOMETRY.leverStick}
+              material={SHARED_MATERIALS.leverStick}
+              dispose={null}
+            />
+            <mesh
+              position={[0, 1.1, 0]}
+              geometry={SHARED_GEOMETRY.leverKnob}
+              material={SHARED_MATERIALS.leverKnob}
+              dispose={null}
+            />
+            <Html position={[0, -0.5, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
               <div className="bg-black/80 text-white px-3 py-1 rounded border border-white/20 select-none whitespace-nowrap text-xs md:text-sm shadow-md">
                 🕹️ {t.common.splitBeam}
               </div>
@@ -219,15 +258,19 @@ export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
           </group>
 
           <group position={[3.5, 0.2, 1.5]} onClick={handleShutterClick} {...shutterCursor}>
-            <mesh position={[0, 0.2, 0]}>
-              <cylinderGeometry args={[0.5, 0.6, 0.4]} />
-              <meshStandardMaterial color="#2f3542" />
-            </mesh>
-            <mesh position={[0, 0.45, 0]}>
-              <cylinderGeometry args={[0.3, 0.3, 0.1]} />
-              <meshStandardMaterial color="#eccc68" metalness={0.6} roughness={0.2} />
-            </mesh>
-            <Html position={[0, 1, 0]} center style={{ pointerEvents: 'none' }}>
+            <mesh
+              position={[0, 0.2, 0]}
+              geometry={SHARED_GEOMETRY.shutterBase}
+              material={SHARED_MATERIALS.shutterBase}
+              dispose={null}
+            />
+            <mesh
+              position={[0, 0.45, 0]}
+              geometry={SHARED_GEOMETRY.shutterButton}
+              material={SHARED_MATERIALS.shutterButton}
+              dispose={null}
+            />
+            <Html position={[0, 1, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
               <div className="bg-black/80 text-white px-3 py-1 rounded border border-white/20 select-none whitespace-nowrap text-xs md:text-sm shadow-md">
                 📸 {t.common.measure}
               </div>
