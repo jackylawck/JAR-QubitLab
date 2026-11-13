@@ -165,8 +165,8 @@ export const initCyberpunkEasterEgg = (): void => {
     '%c本實驗室的 3D 渲染光譜隱藏了四組經典機甲美學對照（主介面維持純學術詞彙）：\n' +
       '• 展台 1 [疊加與測量坍縮] ➔ 初號機（EVA-01）覺醒\n' +
       '• 展台 2 [馬赫-曾德爾相位干涉] ➔ 二號機（EVA-02）明日香\n' +
-      '• 展台 3 [雙量子位元糾纏 / 貝爾態] ➔ 初號機 vs 第13號機 最終對決\n' +
-      '• 展台 4 [量子隱形傳態與不可克隆] ➔ 零號機（EVA-00 山吹橙）轉移至零號機改（EVA-00\' 深鈷藍）與粉藍靈魂封包',
+      '• 展台 3 [雙量子位元糾纏 / 貝爾態] ➔ 初號機（EVA-01） vs 第13號機（EVA-13） 最終對決\n' +
+      '• 展台 4 [量子隱形傳態與不可克隆] ➔ 零號機（EVA-00）轉移至零號機改（EVA-00\' Proto Type）與粉藍靈魂封包',
     zhCardStyle
   );
   print(
@@ -174,7 +174,7 @@ export const initCyberpunkEasterEgg = (): void => {
       '• Booth 1 [Superposition & Wavefunction Collapse] ➔ EVA Unit-01 Awakening\n' +
       '• Booth 2 [Mach-Zehnder Phase Interference] ➔ EVA Unit-02 Asuka\n' +
       '• Booth 3 [Two-Qubit Entanglement / Bell State] ➔ EVA Unit-01 vs. Unit-13 Final Showdown\n' +
-      '• Booth 4 [Quantum Teleportation & No-Cloning] ➔ EVA-00 (Amber Orange) to EVA-00\' (Cobalt Blue) Soul Transfer',
+      '• Booth 4 [Quantum Teleportation & No-Cloning] ➔ EVA-00 (Amber Orange) to EVA-00\' Proto Type) Soul Transfer',
     enCardStyle
   );
 
