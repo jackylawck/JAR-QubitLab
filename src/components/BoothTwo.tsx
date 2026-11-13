@@ -2,8 +2,10 @@
 /*
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+ * Theme: EVA-02 (Asuka Red & Yellow)
  */
 import { useState, useRef, useEffect } from 'react';
+import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
 import { useQuantumStore } from '../store/quantumStore';
@@ -12,6 +14,23 @@ import { sound } from '../audio/soundEngine';
 import { acquireAnimationLock } from '../hooks/useAnimationLock';
 import { PhaseDial } from './PhaseDial';
 import { InterferenceBurst } from './InterferenceBurst';
+
+// 🌟 Zero-GC：靜態共用幾何體與材質
+const SHARED_GEOMETRY = {
+  base: new THREE.BoxGeometry(9, 0.8, 5),
+  track: new THREE.BoxGeometry(5, 0.08, 0.4),
+  cloudCylinder: new THREE.CylinderGeometry(0.45, 0.45, 1, 32),
+  splitBase: new THREE.CylinderGeometry(0.25, 0.3, 0.3, 16),
+  splitKnob: new THREE.SphereGeometry(0.22, 16, 16),
+  collideBase: new THREE.CylinderGeometry(0.35, 0.45, 0.3, 32),
+  collideKnob: new THREE.CylinderGeometry(0.28, 0.28, 0.1, 32),
+};
+
+const SHARED_MATERIALS = {
+  base: new THREE.MeshStandardMaterial({ color: '#111118', roughness: 0.8 }),
+  track: new THREE.MeshStandardMaterial({ color: '#334155', metalness: 0.8, roughness: 0.2 }),
+  btnBase: new THREE.MeshStandardMaterial({ color: '#1e293b', metalness: 0.6, roughness: 0.3 }),
+};
 
 export interface BoothTwoProps {
   pureVisual?: boolean;
@@ -48,8 +67,6 @@ export const BoothTwo = ({ pureVisual = false }: BoothTwoProps) => {
     phaseAngleRef.current = phaseAngle;
   }, [phaseAngle]);
   
-  // ⚠️ 注意：此 useEffect 依賴上方 phaseAngleRef 的 useEffect 先執行！
-  // 若調換兩者順序，在 isSplit 與 phaseAngle 同幀變動的極端場景下，此處會讀到舊的 phaseAngleRef.current。
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (prevIsSplit.current && !isSplit) {
@@ -71,8 +88,12 @@ export const BoothTwo = ({ pureVisual = false }: BoothTwoProps) => {
     prevIsSplit.current = isSplit;
   }, [isSplit]); 
 
+  // 🌟 卸載時安全清理事宜
+  const isMountedRef = useRef(true);
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       if (timerRef.current !== null) clearTimeout(timerRef.current);
       lockReleaseRef.current?.();
       burstReleaseRef.current?.();
@@ -88,14 +109,13 @@ export const BoothTwo = ({ pureVisual = false }: BoothTwoProps) => {
     setIsBusy(true);
 
     timerRef.current = window.setTimeout(() => {
-      setIsBusy(false);
+      if (isMountedRef.current) setIsBusy(false);
       release();
       lockReleaseRef.current = null;
       timerRef.current = null;
     }, duration);
   };
 
-  // 🌟 透明度修正：恢復乘數 0.9 的光霧感，避免 0.5 概率時 0.8 帶來的生硬實心感
   const { h0, h1, opacity0, opacity1 } = useSpring({
     h0: probA * 2.5,
     h1: probB * 2.5,
@@ -124,7 +144,7 @@ export const BoothTwo = ({ pureVisual = false }: BoothTwoProps) => {
   };
 
   const handleBurstComplete = () => {
-    setBurstConfig(null);
+    if (isMountedRef.current) setBurstConfig(null);
     burstReleaseRef.current?.();
     burstReleaseRef.current = null;
   };
@@ -136,50 +156,41 @@ export const BoothTwo = ({ pureVisual = false }: BoothTwoProps) => {
       <ambientLight intensity={0.5} />
       <directionalLight position={[0, 8, 4]} intensity={1.2} />
 
-      <mesh position={[0, -0.6, 0]}>
-        <boxGeometry args={[9, 0.8, 5]} />
-        <meshStandardMaterial color="#111118" roughness={0.8} />
-      </mesh>
+      <mesh position={[0, -0.6, 0]} geometry={SHARED_GEOMETRY.base} material={SHARED_MATERIALS.base} dispose={null} />
+      <mesh position={[0, -0.15, 0]} geometry={SHARED_GEOMETRY.track} material={SHARED_MATERIALS.track} dispose={null} />
 
-      <mesh position={[0, -0.15, 0]}>
-        <boxGeometry args={[5, 0.08, 0.4]} />
-        <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.2} />
-      </mesh>
-
+      {/* 路徑 A：二號機裝甲紅 (EVA-02 Red) */}
       <a.group position={[-2, 0, 0]}>
-        {/* 🌟 補上 scale-y={h0} 真正實作柱狀圖動態高度 */}
-        <a.mesh scale-y={h0} position-y={h0.to((h) => h / 2)}>
-          <cylinderGeometry args={[0.45, 0.45, 1, 32]} />
+        <a.mesh scale-y={h0} position-y={h0.to((h) => h / 2)} geometry={SHARED_GEOMETRY.cloudCylinder} dispose={null}>
           <a.meshStandardMaterial
-            color="#38bdf8"
-            emissive="#38bdf8"
-            emissiveIntensity={0.6}
+            color="#dc2626"
+            emissive="#dc2626"
+            emissiveIntensity={0.75}
             transparent
             opacity={opacity0}
             roughness={0.2}
           />
         </a.mesh>
-        <Html position={[0, -0.4, 0.6]} center style={{ pointerEvents: 'none' }}>
+        <Html position={[0, -0.4, 0.6]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
           <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2 py-0.5 rounded border border-white/20 shadow-md">
             {t.common.pathA}
           </div>
         </Html>
       </a.group>
 
+      {/* 路徑 B：二號機螢光紅，反相干涉時轉為亮黃 (EVA-02 Yellow) */}
       <a.group position={[2, 0, 0]}>
-        {/* 🌟 補上 scale-y={h1} 真正實作柱狀圖動態高度 */}
-        <a.mesh scale-y={h1} position-y={h1.to((h) => h / 2)}>
-          <cylinderGeometry args={[0.45, 0.45, 1, 32]} />
+        <a.mesh scale-y={h1} position-y={h1.to((h) => h / 2)} geometry={SHARED_GEOMETRY.cloudCylinder} dispose={null}>
           <a.meshStandardMaterial
-            color={isSplit && isOppositePhase ? '#ec4899' : '#38bdf8'}
-            emissive={isSplit && isOppositePhase ? '#ec4899' : '#38bdf8'}
-            emissiveIntensity={0.6}
+            color={isSplit && isOppositePhase ? '#facc15' : '#ef4444'}
+            emissive={isSplit && isOppositePhase ? '#eab308' : '#ef4444'}
+            emissiveIntensity={0.75}
             transparent
             opacity={opacity1}
             roughness={0.2}
           />
         </a.mesh>
-        <Html position={[0, -0.4, 0.6]} center style={{ pointerEvents: 'none' }}>
+        <Html position={[0, -0.4, 0.6]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
           <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2 py-0.5 rounded border border-white/20 shadow-md">
             {t.common.pathB}
           </div>
@@ -196,6 +207,7 @@ export const BoothTwo = ({ pureVisual = false }: BoothTwoProps) => {
 
       {!pureVisual && (
         <>
+          {/* 分光操作桿 (二號機紅) */}
           <group
             position={[-3.2, 0.1, 1.2]}
             onClick={handleSplit}
@@ -206,22 +218,18 @@ export const BoothTwo = ({ pureVisual = false }: BoothTwoProps) => {
               document.body.style.cursor = 'auto';
             }}
           >
-            <mesh position={[0, 0.2, 0]}>
-              <cylinderGeometry args={[0.25, 0.3, 0.3, 16]} />
-              <meshStandardMaterial color="#1e293b" />
-            </mesh>
-            <mesh position={[0, 0.45, 0]}>
-              <sphereGeometry args={[0.22, 16, 16]} />
+            <mesh position={[0, 0.2, 0]} geometry={SHARED_GEOMETRY.splitBase} material={SHARED_MATERIALS.btnBase} dispose={null} />
+            <mesh position={[0, 0.45, 0]} geometry={SHARED_GEOMETRY.splitKnob} dispose={null}>
               <meshStandardMaterial 
-                color={!isSplit ? '#38bdf8' : '#64748b'} 
-                emissive={!isSplit ? '#38bdf8' : '#000'}
-                emissiveIntensity={0.5} 
+                color={!isSplit ? '#ef4444' : '#64748b'} 
+                emissive={!isSplit ? '#dc2626' : '#000'}
+                emissiveIntensity={0.75} 
               />
             </mesh>
-            <Html position={[0, -0.4, 0]} center style={{ pointerEvents: 'none' }}>
+            <Html position={[0, -0.4, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
               <div className={`px-2.5 py-1 rounded text-xs select-none whitespace-nowrap shadow-md border ${
                 !isSplit 
-                  ? 'bg-blue-950/80 text-blue-200 border-blue-500/40 animate-pulse' 
+                  ? 'bg-red-950/80 text-red-200 border-red-500/40 animate-pulse' 
                   : 'bg-black/50 text-gray-500 border-gray-700/30'
               }`}>
                 {t.common.splitBeam}
@@ -236,6 +244,7 @@ export const BoothTwo = ({ pureVisual = false }: BoothTwoProps) => {
             isStandby={!isSplit}
           />
 
+          {/* 干涉對撞按鈕 (二號機黃) */}
           <group
             position={[3.2, 0.1, 1.2]}
             onClick={handleCollide}
@@ -246,24 +255,20 @@ export const BoothTwo = ({ pureVisual = false }: BoothTwoProps) => {
               document.body.style.cursor = 'auto';
             }}
           >
-            <mesh position={[0, 0.2, 0]}>
-              <cylinderGeometry args={[0.35, 0.45, 0.3, 32]} />
-              <meshStandardMaterial color="#1e293b" metalness={0.6} roughness={0.3} />
-            </mesh>
-            <mesh position={[0, 0.38, 0]}>
-              <cylinderGeometry args={[0.28, 0.28, 0.1, 32]} />
+            <mesh position={[0, 0.2, 0]} geometry={SHARED_GEOMETRY.collideBase} material={SHARED_MATERIALS.btnBase} dispose={null} />
+            <mesh position={[0, 0.38, 0]} geometry={SHARED_GEOMETRY.collideKnob} dispose={null}>
               <meshStandardMaterial
-                color={isSplit ? '#f59e0b' : '#64748b'}
+                color={isSplit ? '#facc15' : '#64748b'}
                 metalness={0.5}
                 roughness={0.2}
-                emissive={isSplit ? '#f59e0b' : '#000'}
-                emissiveIntensity={isSplit ? 0.6 : 0}
+                emissive={isSplit ? '#eab308' : '#000'}
+                emissiveIntensity={isSplit ? 0.75 : 0}
               />
             </mesh>
-            <Html position={[0, -0.4, 0]} center style={{ pointerEvents: 'none' }}>
+            <Html position={[0, -0.4, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
               <div className={`px-2.5 py-1 rounded text-xs select-none whitespace-nowrap shadow-md border ${
                 isSplit 
-                  ? 'bg-amber-950/80 text-amber-200 border-amber-500/40 font-bold animate-pulse' 
+                  ? 'bg-yellow-950/80 text-yellow-200 border-yellow-500/40 font-bold animate-pulse' 
                   : 'bg-black/50 text-gray-500 border-gray-700/30'
               }`}>
                 {t.common.interfere}
