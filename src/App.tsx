@@ -3,10 +3,9 @@
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
  */
-import { Suspense, useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Html } from '@react-three/drei';
-import { useSpring, a } from '@react-spring/three';
+import { OrbitControls, Html, PerspectiveCamera } from '@react-three/drei';
 
 import { BoothOne } from './components/BoothOne';
 import { BoothTwo } from './components/BoothTwo';
@@ -28,7 +27,6 @@ import { sound } from './audio/soundEngine';
 
 export type BoothType = 'one' | 'two' | 'three' | 'four';
 
-// 🌟 優化 2：將靜態配置抽離組件外部，避免每次渲染重建
 const CAMERA_CONFIGS: Record<BoothType, { pos: [number, number, number]; fov: number }> = {
   one: { pos: [0, 4.5, 9.5], fov: 46 },
   two: { pos: [0, 4.5, 9.5], fov: 46 },
@@ -39,7 +37,6 @@ const CAMERA_CONFIGS: Record<BoothType, { pos: [number, number, number]; fov: nu
 function BoothFallback() {
   const t = useLocaleStore((state) => state.t);
   return (
-    // 🌟 優化 3：關閉 transform 提升效能，因為這只是一個全螢幕的加載遮罩
     <Html center transform={false}>
       <div className="flex flex-col items-center gap-2 select-none pointer-events-none whitespace-nowrap">
         <div className="w-7 h-7 border-2 border-sky-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(56,189,248,0.5)]" />
@@ -78,28 +75,6 @@ const BoothTab = ({
     >
       {label}
     </button>
-  );
-};
-
-const AnimatedCamera = ({ activeBooth }: { activeBooth: BoothType }) => {
-  const current = CAMERA_CONFIGS[activeBooth];
-  
-  const { pos, fov } = useSpring({
-    pos: current.pos,
-    fov: current.fov,
-    config: { mass: 1, tension: 120, friction: 20 },
-  });
-
-  return (
-    // 🌟 優化 1：@react-spring/three 9.x 型別修復
-    // 透過強制轉型消滅型別錯誤，確保編譯通過，同時保留 Spring 動畫
-    <a.perspectiveCamera
-      makeDefault
-      position={pos as unknown as [number, number, number]}
-      fov={fov as unknown as number}
-      near={0.1}
-      far={1000}
-    />
   );
 };
 
@@ -146,6 +121,8 @@ export default function App() {
     setActiveBooth(booth);
   };
 
+  const cam = CAMERA_CONFIGS[activeBooth];
+
   return (
     <div className="w-full h-[100dvh] bg-gray-950 text-gray-100 flex flex-col overflow-hidden select-none touch-none">
       <div className="relative w-full flex-1 min-h-0 bg-[#030712]">
@@ -169,7 +146,7 @@ export default function App() {
         </header>
 
         <Canvas dpr={[1, 2]} frameloop="always" gl={{ antialias: true }}>
-          <AnimatedCamera activeBooth={activeBooth} />
+          <PerspectiveCamera makeDefault position={cam.pos} fov={cam.fov} near={0.1} far={1000} />
 
           <color attach="background" args={['#030712']} />
           <ambientLight intensity={0.85} />
