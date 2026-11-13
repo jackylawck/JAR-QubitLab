@@ -3,7 +3,7 @@
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
  */
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
@@ -12,7 +12,7 @@ import { useLocaleStore } from '../store/localeStore';
 import { sound } from '../audio/soundEngine';
 import { acquireAnimationLock } from '../hooks/useAnimationLock';
 
-// Zero-GC：靜態共用幾何體與材質，避免渲染迴圈中頻繁建立物件
+// Zero-GC：靜態共用幾何體與材質
 const SHARED_GEOMETRY = {
   cloud: new THREE.SphereGeometry(1, 32, 32),
   base: new THREE.BoxGeometry(8, 1, 4),
@@ -85,32 +85,21 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
     config: { mass: 1, tension: isCollapsing ? 300 : 170, friction: isCollapsing ? 15 : 26 },
   });
 
-  // 快取基礎顏色的 MeshStandardMaterial 實例，提升自發光強度以平衡紫光在暗背景的感知亮度
-  const cloudMaterial = useMemo(() => {
-    return new THREE.MeshStandardMaterial({
-      color: baseColor,
-      emissive: baseColor,
-      emissiveIntensity: 0.75,
-      transparent: true,
-      roughness: 0.35,
-      metalness: 0.1,
-    });
-  }, [baseColor]);
-
-  // 組件卸載時釋放獨立生成的材質
-  useEffect(() => {
-    return () => {
-      cloudMaterial.dispose();
-    };
-  }, [cloudMaterial]);
-
   return (
     <group position={position}>
+      {/* 使用標準 a.meshStandardMaterial 避免 a.primitive 觸發 TS2589 泛型遞迴過深 */}
       <a.mesh scale={scale} geometry={SHARED_GEOMETRY.cloud} dispose={null}>
-        <a.primitive attach="material" object={cloudMaterial} opacity={opacity} dispose={null} />
+        <a.meshStandardMaterial
+          color={baseColor}
+          emissive={baseColor}
+          emissiveIntensity={0.75}
+          transparent
+          opacity={opacity}
+          roughness={0.35}
+          metalness={0.1}
+        />
       </a.mesh>
 
-      {/* 限制 zIndexRange 避免行動端 CSS 疊加破壞上層 UI */}
       <Html position={[0, -1.8, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2.5 py-1 rounded-md border border-white/20 shadow-lg backdrop-blur-sm">
           {label}
