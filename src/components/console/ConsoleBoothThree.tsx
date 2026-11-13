@@ -4,9 +4,10 @@
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
  * Description: Booth 3 Two-Qubit Entanglement & Bell State Control Console
  */
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
 import { useTensorStore } from '../../store/tensorStore';
 import { useLocaleStore } from '../../store/localeStore';
+import { useAnimationLock } from '../../hooks/useAnimationLock';
 import { sound } from '../../audio/soundEngine';
 
 const BASIS_LABELS = ['|00⟩', '|01⟩', '|10⟩', '|11⟩'] as const;
@@ -21,6 +22,18 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
 
   const t = useLocaleStore((s) => s.t);
   const locale = useLocaleStore((s) => s.locale);
+  const { isAnimating, requestActionLock } = useAnimationLock();
+
+  // 🌟 統一互動管理器：確保操作冪等性，防禦 UI 狂按導致的狀態競態與動畫脫鉤
+  const executeAction = useCallback(
+    (durationMs: number, action: () => void, soundEffect: () => void) => {
+      if (isAnimating || isSampling) return;
+      requestActionLock(durationMs);
+      soundEffect();
+      action();
+    },
+    [isAnimating, isSampling, requestActionLock]
+  );
 
   const stats = useMemo(() => {
     const counts = [0, 0, 0, 0];
@@ -100,8 +113,8 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
           {/* 按鈕 1：H Gate (q0) - 覺醒紫配色 */}
           <button
             type="button"
-            onClick={() => { sound.playLever(); applyH(0); }}
-            disabled={isSampling}
+            onClick={() => executeAction(400, () => applyH(0), () => sound.playLever())}
+            disabled={isSampling || isAnimating}
             className="min-h-[50px] p-2 rounded-xl flex flex-col items-center justify-center transition-all 
                        bg-purple-950/40 border border-purple-500/40 hover:bg-purple-900/60 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
           >
@@ -112,8 +125,8 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
           {/* 按鈕 2：CNOT (q0→q1) - 紫至緋紅漸層配色 */}
           <button
             type="button"
-            onClick={() => { sound.playMerge(); applyCNOT(0, 1); }}
-            disabled={isSampling}
+            onClick={() => executeAction(400, () => applyCNOT(0, 1), () => sound.playMerge())}
+            disabled={isSampling || isAnimating}
             className="min-h-[50px] p-2 rounded-xl flex flex-col items-center justify-center transition-all relative overflow-hidden active:scale-95 disabled:opacity-30 disabled:pointer-events-none
                        border border-fuchsia-500/50 hover:border-fuchsia-400"
           >
@@ -125,8 +138,11 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
           {/* 按鈕 3：Sample (20x) - 琥珀金配色 */}
           <button
             type="button"
-            onClick={sample20x}
-            disabled={isSampling}
+            onClick={() => {
+              if (isAnimating || isSampling) return;
+              sample20x();
+            }}
+            disabled={isSampling || isAnimating}
             className="min-h-[50px] p-2 rounded-xl flex flex-col items-center justify-center transition-all
                        bg-amber-950/40 border border-amber-600/50 hover:bg-amber-900/60 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
           >
@@ -158,8 +174,8 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
         <div className="flex justify-end items-center px-1">
           <button
             type="button"
-            onClick={() => { sound.playLever(); reset(); }}
-            disabled={isSampling}
+            onClick={() => executeAction(300, reset, () => sound.playLever())}
+            disabled={isSampling || isAnimating}
             className="text-[10px] text-slate-500 hover:text-rose-400 transition-colors font-mono font-bold disabled:opacity-30 active:scale-95 flex items-center gap-1"
           >
             <span aria-hidden="true">↺</span> RESET SYSTEM
