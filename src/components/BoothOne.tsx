@@ -2,6 +2,7 @@
 /*
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+ * Theme: EVA-01 (Purple #a855f7 & Cyan #22d3ee)
  */
 import { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
@@ -12,7 +13,6 @@ import { useLocaleStore } from '../store/localeStore';
 import { sound } from '../audio/soundEngine';
 import { acquireAnimationLock } from '../hooks/useAnimationLock';
 
-// Zero-GC：靜態共用幾何體與材質
 const SHARED_GEOMETRY = {
   cloud: new THREE.SphereGeometry(1, 32, 32),
   base: new THREE.BoxGeometry(8, 1, 4),
@@ -25,9 +25,9 @@ const SHARED_GEOMETRY = {
 const SHARED_MATERIALS = {
   base: new THREE.MeshStandardMaterial({ color: '#1a1a24', roughness: 0.7 }),
   leverStick: new THREE.MeshStandardMaterial({ color: '#8892b0', metalness: 0.8, roughness: 0.2 }),
-  leverKnob: new THREE.MeshStandardMaterial({ color: '#a855f7', emissive: '#7e22ce', emissiveIntensity: 0.35, metalness: 0.3, roughness: 0.4 }),
+  leverKnob: new THREE.MeshStandardMaterial({ color: '#a855f7', emissive: '#a855f7', emissiveIntensity: 0.6, metalness: 0.3, roughness: 0.4 }),
   shutterBase: new THREE.MeshStandardMaterial({ color: '#2f3542' }),
-  shutterButton: new THREE.MeshStandardMaterial({ color: '#22d3ee', emissive: '#0891b2', emissiveIntensity: 0.35, metalness: 0.6, roughness: 0.2 }),
+  shutterButton: new THREE.MeshStandardMaterial({ color: '#22d3ee', emissive: '#22d3ee', emissiveIntensity: 0.6, metalness: 0.6, roughness: 0.2 }),
 };
 
 const useCursor = () => {
@@ -60,7 +60,7 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
 
   if (isCollapsing) {
     if (isWinner) {
-      targetScale = 1.8;
+      targetScale = 1.75;
       targetOpacity = 1.0;
     } else {
       targetScale = 0.01;
@@ -68,11 +68,12 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
     }
   } else {
     if (modulus > 0.95) {
-      targetScale = modulus * 1.5;
+      targetScale = modulus * 1.45;
       targetOpacity = 1.0;
     } else if (modulus > 0.1) {
-      targetScale = modulus * 1.5;
-      targetOpacity = modulus * 0.9;
+      // 疊加態 (modulus ≈ 0.707) 時維持高不透明度 0.88，避免背後黑底把紫光與青光吃暗
+      targetScale = modulus * 1.45;
+      targetOpacity = 0.88;
     } else {
       targetScale = 0.01;
       targetOpacity = 0;
@@ -87,21 +88,21 @@ const QubitCloud = ({ position, modulus, baseColor, label, isCollapsing }: Qubit
 
   return (
     <group position={position}>
-      {/* 使用標準 a.meshStandardMaterial 避免 a.primitive 觸發 TS2589 泛型遞迴過深 */}
       <a.mesh scale={scale} geometry={SHARED_GEOMETRY.cloud} dispose={null}>
         <a.meshStandardMaterial
           color={baseColor}
           emissive={baseColor}
-          emissiveIntensity={0.75}
+          emissiveIntensity={1.15}
+          toneMapped={false}
           transparent
           opacity={opacity}
-          roughness={0.35}
-          metalness={0.1}
+          roughness={0.25}
+          metalness={0.05}
         />
       </a.mesh>
 
       <Html position={[0, -1.8, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-        <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/60 px-2.5 py-1 rounded-md border border-white/20 shadow-lg backdrop-blur-sm">
+        <div className="text-xs md:text-sm font-bold font-mono text-white whitespace-nowrap bg-black/70 px-2.5 py-1 rounded-md border border-white/25 shadow-lg backdrop-blur-sm">
           {label}
         </div>
       </Html>
@@ -196,8 +197,8 @@ export const BoothOne = ({ pureVisual = false }: BoothOneProps) => {
 
   return (
     <group>
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 10, 5]} intensity={1.5} />
+      <ambientLight intensity={0.65} />
+      <directionalLight position={[5, 10, 5]} intensity={1.6} />
 
       <mesh
         position={[0, -0.5, 0]}
