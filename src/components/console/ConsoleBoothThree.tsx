@@ -2,7 +2,7 @@
 /*
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
- * Theme: EVA-01 vs EVA-13 Final Showdown Console
+ * Description: Booth 3 Two-Qubit Entanglement & Bell State Control Console
  */
 import { useMemo, useEffect } from 'react';
 import { useTensorStore } from '../../store/tensorStore';
@@ -22,13 +22,12 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
   const t = useLocaleStore((s) => s.t);
   const locale = useLocaleStore((s) => s.locale);
 
-  // 安全統計 20 次抽樣結果
   const stats = useMemo(() => {
     const counts = [0, 0, 0, 0];
     for (let i = 0; i < sampleHistory.length; i++) {
       const idx = sampleHistory[i];
       if (idx !== undefined && idx >= 0 && idx < 4) {
-        counts[idx] = (counts[idx] ?? 0) + 1; 
+        counts[idx] = (counts[idx] ?? 0) + 1;
       }
     }
     return counts;
@@ -36,7 +35,6 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
 
   const historyLen = sampleHistory.length;
 
-  // 滴答音效與結尾和弦
   useEffect(() => {
     if (historyLen > 0 && historyLen < 20) {
       sound.playTick(historyLen - 1);
@@ -45,24 +43,23 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
       const timer = setTimeout(() => sound.playVictoryChord(), 150);
       return () => clearTimeout(timer);
     }
-    return undefined; 
+    return undefined;
   }, [historyLen]);
 
   return (
     <div className="w-full max-w-xl mx-auto h-full flex flex-col pointer-events-auto transition-all select-none">
-      
-      {/* 頂部：EVA 戰術同步率監視儀表 */}
+      {/* 頂部：雙量子位元狀態監視儀表 */}
       <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 shadow-xl mb-3">
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-xs font-mono font-bold text-slate-400">SYNC RATIO:</span>
+            <span className="text-[10px] sm:text-xs font-mono font-bold text-slate-400">QUANTUM STATE:</span>
             {isEntangled ? (
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/60 text-purple-300 border border-purple-500/50 animate-pulse">
-                DESTINATION: LINKED
+                ENTANGLED (BELL STATE)
               </span>
             ) : (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-500 border border-slate-700">
-                STANDBY
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                SEPARABLE
               </span>
             )}
           </div>
@@ -71,28 +68,27 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
             onClick={() => setIsExplaining(!isExplaining)}
             className="text-[11px] text-sky-400 hover:text-sky-300 font-bold px-2 py-0.5 rounded bg-sky-950/50 border border-sky-800/40 cursor-pointer transition-colors active:scale-95"
           >
-            {isExplaining ? (locale === 'zh' ? '收起檔案' : 'Close File') : (locale === 'zh' ? '戰術解析 💡' : 'Theory 💡')}
+            {isExplaining ? (locale === 'zh' ? '收起說明' : 'Hide Info') : (locale === 'zh' ? '原理解析 💡' : 'Theory 💡')}
           </button>
         </div>
 
-        {/* 四個基底態的機率分佈 (MAGI 儀表風格) */}
+        {/* 四個基底態的機率分佈 */}
         <div className="grid grid-cols-4 gap-1 sm:gap-2">
           {amplitudes.map((amp, i) => {
             const prob = Math.round(amp.probability * 100);
             const isActive = prob > 0;
-            // i=0,1 (左側) 偏向初號機紫綠；i=2,3 (右側) 偏向13號機紫紅。糾纏時統一高亮。
             const colorClass = isActive
               ? isEntangled
                 ? 'text-fuchsia-400 bg-fuchsia-950/40 border-fuchsia-500/50 shadow-[0_0_8px_rgba(232,121,249,0.3)]'
-                : i < 2 
-                  ? 'text-purple-400 bg-purple-950/40 border-purple-500/50' 
+                : i < 2
+                  ? 'text-purple-400 bg-purple-950/40 border-purple-500/50'
                   : 'text-indigo-400 bg-indigo-950/40 border-indigo-500/50'
               : 'text-slate-600 bg-slate-900/50 border-slate-800/50 opacity-60';
 
             return (
               <div key={i} className={`flex flex-col items-center justify-center p-1.5 rounded border ${colorClass} transition-all duration-300`}>
                 <span className="text-[11px] font-mono font-bold">{amp.label}</span>
-                <span className="text-[13px] font-mono font-black">{prob}%</span>
+                <span className="text-[13px] font-mono font-black tabular-nums">{prob}%</span>
               </div>
             );
           })}
@@ -101,40 +97,43 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
 
       {!isExplaining ? (
         <div className="grid grid-cols-3 gap-2.5 flex-1">
-          {/* 按鈕 1：初號機 (H Gate) - 覺醒紫 */}
+          {/* 按鈕 1：H Gate (q0) - 覺醒紫配色 */}
           <button
+            type="button"
             onClick={() => { sound.playLever(); applyH(0); }}
             disabled={isSampling}
             className="min-h-[50px] p-2 rounded-xl flex flex-col items-center justify-center transition-all 
                        bg-purple-950/40 border border-purple-500/40 hover:bg-purple-900/60 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
           >
-            <span className="text-[13px] sm:text-sm font-bold text-purple-300 mb-0.5">EVA-01 (H)</span>
-            <span className="text-[10px] text-purple-400/70 font-mono">覺醒疊加</span>
+            <span className="text-[13px] sm:text-sm font-bold text-purple-300 mb-0.5">H Gate (q0)</span>
+            <span className="text-[10px] text-purple-400/70 font-mono">{locale === 'zh' ? '量子疊加' : 'Superposition'}</span>
           </button>
 
-          {/* 按鈕 2：強制同步 (CNOT Gate) - 糾纏漸層 (紫 -> 赤紅) */}
+          {/* 按鈕 2：CNOT (q0→q1) - 紫至緋紅漸層配色 */}
           <button
+            type="button"
             onClick={() => { sound.playMerge(); applyCNOT(0, 1); }}
             disabled={isSampling}
             className="min-h-[50px] p-2 rounded-xl flex flex-col items-center justify-center transition-all relative overflow-hidden active:scale-95 disabled:opacity-30 disabled:pointer-events-none
                        border border-fuchsia-500/50 hover:border-fuchsia-400"
           >
             <div className={`absolute inset-0 bg-gradient-to-r from-purple-800/60 to-rose-800/60 ${isEntangled ? 'animate-pulse opacity-100' : 'opacity-40'}`} />
-            <span className="text-[13px] sm:text-sm font-bold text-white mb-0.5 relative z-10 drop-shadow-md">SYNC (CNOT)</span>
-            <span className="text-[10px] text-fuchsia-200/80 font-mono relative z-10">命運糾纏</span>
+            <span className="text-[13px] sm:text-sm font-bold text-white mb-0.5 relative z-10 drop-shadow-md">CNOT (q0→q1)</span>
+            <span className="text-[10px] text-fuchsia-200/80 font-mono relative z-10">{locale === 'zh' ? '量子糾纏' : 'Entanglement'}</span>
           </button>
 
-          {/* 按鈕 3：觀測 (20x Sampling) - MAGI 琥珀金 */}
+          {/* 按鈕 3：Sample (20x) - 琥珀金配色 */}
           <button
+            type="button"
             onClick={sample20x}
             disabled={isSampling}
             className="min-h-[50px] p-2 rounded-xl flex flex-col items-center justify-center transition-all
                        bg-amber-950/40 border border-amber-600/50 hover:bg-amber-900/60 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
           >
             <span className="text-[13px] sm:text-sm font-bold text-amber-400 mb-0.5">
-              {isSampling ? 'SAMPLING...' : 'MAGI (20x)'}
+              {isSampling ? 'SAMPLING...' : 'Sample (20x)'}
             </span>
-            <span className="text-[10px] text-amber-500/70 font-mono">統計觀測</span>
+            <span className="text-[10px] text-amber-500/70 font-mono">{locale === 'zh' ? '統計觀測' : 'Observe'}</span>
           </button>
         </div>
       ) : (
@@ -143,7 +142,7 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
         </div>
       )}
 
-      {/* 統計結果與底部重置 (20次觀測完畢後顯示進度) */}
+      {/* 統計結果與底部重置 */}
       <div className="flex flex-col gap-2 mt-3">
         {sampleHistory.length > 0 && !isExplaining && (
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 py-1.5 px-2 text-[10px] sm:text-xs font-mono bg-slate-950/60 rounded-lg border border-slate-800/80 shadow-inner">
@@ -158,15 +157,15 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
 
         <div className="flex justify-end items-center px-1">
           <button
+            type="button"
             onClick={() => { sound.playLever(); reset(); }}
             disabled={isSampling}
             className="text-[10px] text-slate-500 hover:text-rose-400 transition-colors font-mono font-bold disabled:opacity-30 active:scale-95 flex items-center gap-1"
           >
-            <span aria-hidden="true">⏻</span> RESTART SYSTEM
+            <span aria-hidden="true">↺</span> RESET SYSTEM
           </button>
         </div>
       </div>
-      
     </div>
   );
 };
