@@ -79,7 +79,7 @@ export const initCyberpunkEasterEgg = (): void => {
   const quoteStyle = `${baseCard} color: #f43f5e; font-size: 11px; font-weight: bold; font-family: monospace; font-style: italic; border-left: 3px solid #f43f5e;`;
   const headerStyle = `${baseCard} color: #38bdf8; font-size: 12px; font-weight: bold; font-family: monospace; border-left: 3px solid #38bdf8; width: 100%; margin-top: 8px;`;
   const zhCardStyle = `${baseCard} color: #f1f5f9; font-size: 11.5px; line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; border: 1px solid #1e293b; width: 100%;`;
-  const enCardStyle = `${baseCard} color: #94a3b8; font-size: 10.5px; line-height: 1.5; font-family: monospace; border: 1px solid #1e293b; width: 100%;`;
+  const enCardStyle = `${baseCard} color: #94a3b8; font-size: 10.5px; line-height: 1.55; font-family: monospace; border: 1px solid #1e293b; width: 100%;`;
   const termHighlight =
     'color: #f59e0b; font-weight: bold; font-family: monospace; text-shadow: 0 0 4px rgba(245,158,11,0.4);';
   const commandStyle = `${baseCard} color: #a855f7; font-weight: bold; font-size: 11px; font-family: monospace; border: 1px dotted #a855f7; cursor: text; line-height: 1.65; width: 100%;`;
@@ -93,7 +93,7 @@ export const initCyberpunkEasterEgg = (): void => {
   );
 
   // ==========================================
-  // 4. 初始加載檔案日誌（雙語對照）
+  // 4. 初始加載檔案日誌（全中英文雙語對照）
   // ==========================================
   group('%c⚛️ [ J.A.R. PROTOCOL // 0x4C415354_4F52444552 ]', titleStyle);
 
@@ -132,7 +132,7 @@ export const initCyberpunkEasterEgg = (): void => {
     enCardStyle
   );
 
-  // LOG 03：四大展台視覺色譜密碼
+  // LOG 03：四大展台視覺色譜密碼（中英文雙語卡片）
   print('%cLOG 03: 四大展台視覺色譜與隱喻對照 // Chromatic Architecture & Visual Motifs', headerStyle);
   print(
     '%c本實驗室的 3D 渲染光譜隱藏了四組經典機甲美學對照（主介面維持純學術詞彙）：\n' +
@@ -142,23 +142,31 @@ export const initCyberpunkEasterEgg = (): void => {
       '• 展台 4 [量子隱形傳態與不可克隆] ➔ 零號機（EVA-00）靈魂轉移與 MAGI 傳輸',
     zhCardStyle
   );
+  print(
+    '%cThe 3D rendering spectrum of this lab encodes four classic mecha aesthetic motifs (while keeping the main UI strictly academic):\n' +
+      '• Booth 1 [Superposition & Wavefunction Collapse] ➔ EVA Unit-01 Awakening\n' +
+      '• Booth 2 [Mach-Zehnder Phase Interference] ➔ EVA Unit-02 Asuka\n' +
+      '• Booth 3 [Two-Qubit Entanglement / Bell State] ➔ EVA Unit-01 vs. Unit-13 Final Showdown\n' +
+      '• Booth 4 [Quantum Teleportation & No-Cloning] ➔ EVA Unit-00 Soul Transfer & MAGI Transmission',
+    enCardStyle
+  );
 
-  // 指令引導
+  // 指令引導（雙語）
   print('%c[ TERMINAL OVERRIDE // 互動指令解鎖 INTERACTIVE COMMANDS ]', headerStyle);
   print(
     '%c> 請在 Console 直接鍵入以下指令（支援大小寫，無需括號）並按 Enter：\n' +
       '> Enter any of the following commands (case-insensitive, no brackets):\n' +
-      '  • PALETTE (或 palette / eva)   — 檢視四大展台色彩光譜密碼表\n' +
-      '  • MELCHIZEDEK (或 melchizedek) — 啟動軌道量子中樞宿命演算\n' +
-      '  • FLAN (或 flan)               — 合成 4000 kcal 虛擬焦糖布丁\n' +
-      '  • THE_LAST_ORDER (或 last_order) — 觸發溫和相位干涉場特效（自動遵循系統減少動態偏好）',
+      '  • PALETTE (或 palette / eva)     — 檢視四大展台色彩光譜密碼表 // View Booth Chromatic Cipher\n' +
+      '  • MELCHIZEDEK (或 melchizedek)   — 啟動軌道量子中樞宿命演算 // Run Orbital Core Computation\n' +
+      '  • FLAN (或 flan)                 — 合成 4000 kcal 虛擬焦糖布丁 // Synthesize Virtual Caramel Flan\n' +
+      '  • THE_LAST_ORDER (或 last_order) — 觸發溫和相位干涉場特效 // Trigger Gentle Phase Interference Pulse',
     commandStyle
   );
 
   groupEnd();
 
   // ==========================================
-  // 5. 互動指令實作（各功能獨立抽出，支援無括號與傳統物件呼叫）
+  // 5. 互動指令實作（全中英文雙語輸出）
   // ==========================================
   const runPalette = (): void => {
     print(
@@ -166,11 +174,15 @@ export const initCyberpunkEasterEgg = (): void => {
       'color: #a855f7; font-weight: 900; font-size: 13px; font-family: monospace;'
     );
     print(
-      '%c  [展台 1] 疊加與測量坍縮       │ 初號機（EVA-01）覺醒          │ 裝甲紫 #a855f7 ＋ 螢光青綠 #10b981\n' +
-        '  [展台 2] 馬赫-曾德爾相位干涉  │ 二號機（EVA-02）明日香        │ 明日香紅 #dc2626 ＋ 亮黃 #facc15\n' +
-        '  [展台 3] 雙量子位元糾纏       │ 初號機 vs 第13號機 最終對決   │ 紫綠 #a855f7/#22c55e vs 紫藍緋紅 #6366f1/#e11d48\n' +
-        '  [展台 4] 量子隱形傳態         │ 零號機（EVA-00）與 MAGI 傳輸  │ 山吹橙 #f97316 ＋ 初期藍 #0ea5e9 ＋ 琥珀金 #fbbf24',
-      'background: #090d16; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 11px; line-height: 1.7;'
+      '%c  [展台 1 / Booth 1] 疊加與測量坍縮 (Superposition & Collapse)\n' +
+        '    ↳ 初號機（EVA-01）覺醒 / Unit-01 Awakening ➔ 裝甲紫 #a855f7 ＋ 螢光青綠 #10b981\n' +
+        '  [展台 2 / Booth 2] 馬赫-曾德爾相位干涉 (Mach-Zehnder Interference)\n' +
+        '    ↳ 二號機（EVA-02）明日香 / Unit-02 Asuka ➔ 明日香紅 #dc2626 ＋ 亮黃 #facc15\n' +
+        '  [展台 3 / Booth 3] 雙量子位元糾纏 (Bell State Entanglement)\n' +
+        '    ↳ 初號機 vs 第13號機 / Unit-01 vs Unit-13 ➔ 紫綠 #a855f7/#22c55e vs 紫藍緋紅 #6366f1/#e11d48\n' +
+        '  [展台 4 / Booth 4] 量子隱形傳態 (Quantum Teleportation)\n' +
+        '    ↳ 零號機（EVA-00）與 MAGI 傳輸 / Unit-00 & MAGI ➔ 山吹橙 #f97316 ＋ 初期藍 #0ea5e9 ＋ 琥珀金 #fbbf24',
+      'background: #090d16; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 11px; line-height: 1.75;'
     );
   };
 
@@ -222,14 +234,13 @@ export const initCyberpunkEasterEgg = (): void => {
       'color: #f1f5f9; font-weight: bold; font-family: sans-serif;'
     );
 
-    // 顧及視覺健康：檢查使用者作業系統是否開啟「減少動態效果 (prefers-reduced-motion)」
     const prefersReducedMotion =
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     if (prefersReducedMotion) {
       print(
-        '%c> [ACCESSIBILITY GUARD] 偵測到系統已啟用「減少動態效果」，已自動略過畫面相位脈衝以保護視覺舒適。\n> Reduced-motion preference detected; visual phase pulse bypassed for comfort.',
+        '%c> [ACCESSIBILITY GUARD // 無障礙防護] 偵測到系統已啟用「減少動態效果」，已自動略過畫面相位脈衝以保護視覺舒適。\n> Reduced-motion preference detected; visual phase pulse bypassed for comfort.',
         'color: #38bdf8; font-family: monospace;'
       );
       return;
@@ -245,11 +256,9 @@ export const initCyberpunkEasterEgg = (): void => {
 
     const fxClass = 'jar-quantum-phase-pulse';
 
-    // 冪等性防護：先清理舊定時器與舊樣式節點，避免連續狂按造成殘留
     FX_GC.clearAllTimers();
     FX_GC.cleanupStyle(root, fxClass);
 
-    // 隔離樣式表注入（不污染 inline style，且移除高頻黑白閃爍 invert 以保護光敏感使用者）
     const style = document.createElement('style');
     style.id = FX_GC.styleId;
     style.textContent = `
@@ -266,7 +275,6 @@ export const initCyberpunkEasterEgg = (): void => {
     `;
     document.head.appendChild(style);
 
-    // 強制同步重繪 (Reflow) 確保連按時動畫從第 0 幀重播
     void root.offsetWidth;
     root.classList.add(fxClass);
 
@@ -281,7 +289,6 @@ export const initCyberpunkEasterEgg = (): void => {
 
   // ==========================================
   // 6. 不可枚舉零括號存取器 (Non-enumerable Zero-Parenthesis Getters)
-  // enumerable: false 確保不污染 Object.keys(window)
   // ==========================================
   const registerCommand = (aliases: readonly string[], action: () => void): void => {
     aliases.forEach((trigger) => {
@@ -301,28 +308,27 @@ export const initCyberpunkEasterEgg = (): void => {
   registerCommand(['FLAN', 'flan'], runFlan);
   registerCommand(['THE_LAST_ORDER', 'the_last_order', 'LAST_ORDER', 'last_order'], runLastOrder);
 
-  // 同時掛載不可枚舉的傳統命名空間呼叫方式 (window.qubitlab.palette() 等)
   Object.defineProperty(window, 'qubitlab', {
     value: Object.freeze({
       help: () => {
         runPalette();
-        return '[ QubitLab Terminal Ready ]';
+        return '[ QubitLab Terminal Ready // 量子終端已就緒 ]';
       },
       palette: () => {
         runPalette();
-        return '[ PALETTE ]';
+        return '[ PALETTE // 色彩光譜對照 ]';
       },
       melchizedek: () => {
         runMelchizedek();
-        return '[ MELCHIZEDEK ]';
+        return '[ MELCHIZEDEK // 梅爾基洗德中樞 ]';
       },
       flan: () => {
         runFlan();
-        return '[ FLAN ]';
+        return '[ FLAN // 虛擬焦糖布丁 ]';
       },
       lastOrder: () => {
         runLastOrder();
-        return '[ THE_LAST_ORDER ]';
+        return '[ THE_LAST_ORDER // 行星收束協定 ]';
       },
     }),
     enumerable: false,
