@@ -2,7 +2,7 @@
 /*
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
- * Classification: LEVEL-5 CLASSIFIED ARCHIVE // QUANTUM DYNAMICS
+ * Classification: LEVEL-5 CLASSIFIED ARCHIVE // QUANTUM DYNAMICS & MAGI SYSTEM
  */
 
 declare global {
@@ -11,6 +11,7 @@ declare global {
     qubitlab?: {
       help: () => string;
       palette: () => string;
+      magi: () => string;
       melchizedek: () => string;
       flan: () => string;
       lastOrder: () => string;
@@ -25,16 +26,21 @@ export const initCyberpunkEasterEgg = (): void => {
 
   // ==========================================
   // 1. 雙層防混淆與抗編譯清除 (Anti-Minifier Console Binding)
-  // 透過動態拼接防止 Vite / esbuild / Terser 的 AST 靜態分析誤刪日誌
+  // 動態拼接物件與方法名稱，100% 免疫 esbuild / Terser AST 靜態剔除與屬性混淆
   // ==========================================
-  const consoleKey = 'con' + 'sole';
-  const nativeConsole = (window as unknown as Record<string, Console | undefined>)[consoleKey];
-  if (!nativeConsole) return;
+  const cKey = 'con' + 'sole';
+  const rawConsole = (window as unknown as Record<string, Record<string, unknown> | undefined>)[cKey];
+  if (!rawConsole) return;
 
-  const print = nativeConsole.log.bind(nativeConsole);
-  const warn = nativeConsole.warn.bind(nativeConsole);
-  const group = nativeConsole.group.bind(nativeConsole);
-  const groupEnd = nativeConsole.groupEnd.bind(nativeConsole);
+  const bindMethod = (methodName: string): ((...args: unknown[]) => void) => {
+    const fn = rawConsole[methodName];
+    return typeof fn === 'function' ? (fn.bind(rawConsole) as (...args: unknown[]) => void) : () => {};
+  };
+
+  const print = bindMethod('l' + 'og');
+  const warn = bindMethod('wa' + 'rn');
+  const group = bindMethod('gro' + 'up');
+  const groupEnd = bindMethod('group' + 'End');
 
   // ==========================================
   // 2. 統一特效與定時器資源管理器 (FX_GC Resource Manager)
@@ -67,6 +73,27 @@ export const initCyberpunkEasterEgg = (): void => {
         existing.remove();
       }
     },
+  };
+
+  // Vite HMR 熱更新安全清理，防止開發重載殘留定時器
+  if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+      FX_GC.clearAllTimers();
+      FX_GC.cleanupStyle(document.getElementById('root'), 'jar-quantum-phase-pulse');
+      window.__JAR_EASTER_EGG_LOADED__ = false;
+    });
+  }
+
+  // 安全偵測作業系統減少動態偏好（WCAG 2.3.3 無障礙視覺保護）
+  const isReducedMotionPreferred = (): boolean => {
+    try {
+      return (
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      );
+    } catch {
+      return false;
+    }
   };
 
   // 自適應暗黑終端卡片樣式
@@ -132,7 +159,7 @@ export const initCyberpunkEasterEgg = (): void => {
     enCardStyle
   );
 
-  // LOG 03：四大展台視覺色譜密碼（中英文雙語卡片）
+  // LOG 03：四大展台視覺色譜密碼
   print('%cLOG 03: 四大展台視覺色譜與隱喻對照 // Chromatic Architecture & Visual Motifs', headerStyle);
   print(
     '%c本實驗室的 3D 渲染光譜隱藏了四組經典機甲美學對照（主介面維持純學術詞彙）：\n' +
@@ -151,12 +178,13 @@ export const initCyberpunkEasterEgg = (): void => {
     enCardStyle
   );
 
-  // 指令引導（雙語）
+  // 指令引導
   print('%c[ TERMINAL OVERRIDE // 互動指令解鎖 INTERACTIVE COMMANDS ]', headerStyle);
   print(
     '%c> 請在 Console 直接鍵入以下指令（支援大小寫，無需括號）並按 Enter：\n' +
       '> Enter any of the following commands (case-insensitive, no brackets):\n' +
       '  • PALETTE (或 palette / eva)     — 檢視四大展台色彩光譜密碼表 // View Booth Chromatic Cipher\n' +
+      '  • MAGI (或 magi / sync)          — 啟動三賢人量子態同步表決 // Run MAGI Tri-Core Consensus\n' +
       '  • MELCHIZEDEK (或 melchizedek)   — 啟動軌道量子中樞宿命演算 // Run Orbital Core Computation\n' +
       '  • FLAN (或 flan)                 — 合成 4000 kcal 虛擬焦糖布丁 // Synthesize Virtual Caramel Flan\n' +
       '  • THE_LAST_ORDER (或 last_order) — 觸發溫和相位干涉場特效 // Trigger Gentle Phase Interference Pulse',
@@ -179,11 +207,31 @@ export const initCyberpunkEasterEgg = (): void => {
         '  [展台 2 / Booth 2] 馬赫-曾德爾相位干涉 (Mach-Zehnder Interference)\n' +
         '    ↳ 二號機（EVA-02）明日香 / Unit-02 Asuka ➔ 明日香紅 #dc2626 ＋ 亮黃 #facc15\n' +
         '  [展台 3 / Booth 3] 雙量子位元糾纏 (Bell State Entanglement)\n' +
-        '    ↳ 初號機 vs 第13號機 / Unit-01 vs Unit-13 ➔ 紫綠 #a855f7/#22c55e vs 紫藍緋紅 #6366f1/#e11d48\n' +
+        '    ↳ 初號機 vs 第13號機 / Unit-01 vs Unit-13 ➔ 紫綠 #9333ea/#22c55e vs 紫藍緋紅 #3730a3/#e11d48（卡西烏斯光槍 #ff1e42）\n' +
         '  [展台 4 / Booth 4] 量子隱形傳態 (Quantum Teleportation)\n' +
         '    ↳ 零號機（EVA-00）與 MAGI 傳輸 / Unit-00 & MAGI ➔ 山吹橙 #f97316 ＋ 初期藍 #0ea5e9 ＋ 琥珀金 #fbbf24',
       'background: #090d16; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 11px; line-height: 1.75;'
     );
+  };
+
+  const runMagi = (): void => {
+    const syncRate = (99.4 + Math.random() * 0.59).toFixed(2);
+    print(
+      '%c🔶 [ MAGI TRI-CORE QUANTUM CONSENSUS // 三賢人量子態同步表決系統 ]',
+      'color: #f97316; font-weight: 900; font-size: 13px; font-family: monospace; text-shadow: 0 0 8px rgba(249,115,22,0.5);'
+    );
+    print(
+      '%c  • MELCHIOR-1 (科學家 / Scientist)  ➔ [ 承認 / APPROVED ] 酉矩陣演化誤差 < 1e-12\n' +
+        '  • BALTHASAR-2 (母親 / Mother)     ➔ [ 承認 / APPROVED ] 零數據留存隱私邊界完整\n' +
+        '  • CASPER-3 (女性 / Woman)         ➔ [ 承認 / APPROVED ] 波函數相干性穩定',
+      'background: #090d16; color: #fdba74; border: 1px solid #9a3412; border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 11px; line-height: 1.75;'
+    );
+    FX_GC.schedule(() => {
+      print(
+        `%c[ CONSENSUS REACHED // 全票通過 ] 量子態同調率 SYNCHRONIZATION RATE: ${syncRate}%`,
+        'color: #10b981; font-weight: bold; background: #064e3b; padding: 3px 8px; border-radius: 3px; font-family: monospace;'
+      );
+    }, 450);
   };
 
   const runMelchizedek = (): void => {
@@ -234,11 +282,7 @@ export const initCyberpunkEasterEgg = (): void => {
       'color: #f1f5f9; font-weight: bold; font-family: sans-serif;'
     );
 
-    const prefersReducedMotion =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReducedMotion) {
+    if (isReducedMotionPreferred()) {
       print(
         '%c> [ACCESSIBILITY GUARD // 無障礙防護] 偵測到系統已啟用「減少動態效果」，已自動略過畫面相位脈衝以保護視覺舒適。\n> Reduced-motion preference detected; visual phase pulse bypassed for comfort.',
         'color: #38bdf8; font-family: monospace;'
@@ -304,6 +348,7 @@ export const initCyberpunkEasterEgg = (): void => {
   };
 
   registerCommand(['PALETTE', 'palette', 'EVA', 'eva'], runPalette);
+  registerCommand(['MAGI', 'magi', 'SYNC', 'sync'], runMagi);
   registerCommand(['MELCHIZEDEK', 'melchizedek'], runMelchizedek);
   registerCommand(['FLAN', 'flan'], runFlan);
   registerCommand(['THE_LAST_ORDER', 'the_last_order', 'LAST_ORDER', 'last_order'], runLastOrder);
@@ -317,6 +362,10 @@ export const initCyberpunkEasterEgg = (): void => {
       palette: () => {
         runPalette();
         return '[ PALETTE // 色彩光譜對照 ]';
+      },
+      magi: () => {
+        runMagi();
+        return '[ MAGI // 三賢人量子態表決 ]';
       },
       melchizedek: () => {
         runMelchizedek();
