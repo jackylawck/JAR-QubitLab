@@ -1,10 +1,14 @@
 // scripts/verify-build.mjs
+/*
+ * Project: J.A.R. QubitLab (Joint Applied Research)
+ * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+ */
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join, extname } from 'node:path';
 
-const isCI = process.env.GITHUB_ACTIONS === 'true';
-const REPO_NAME = 'JAR-QubitLab'; // ⚠️ 與 vite.config.ts 的 base 保持一致
-const basePrefix = isCI ? `/${REPO_NAME}/` : '/';
+const REPO_NAME = 'JAR-QubitLab';
+// 🌟 優化 1：對齊 vite.config.ts 的 isBuild 邏輯，無論 CI 或本機，只要是 npm run build，路徑皆為子路徑
+const basePrefix = `/${REPO_NAME}/`;
 
 const distDir = resolve('dist');
 const htmlPath = join(distDir, 'index.html');
@@ -29,7 +33,6 @@ if (!cspMatch) {
 
 const csp = cspMatch[2];
 
-// 基本指令字串檢查
 const basicDirectives = [
   "default-src 'self'",
   "script-src 'self'",
@@ -43,7 +46,6 @@ for (const d of basicDirectives) {
   }
 }
 
-// 彈性檢查 worker-src：必須同時包含 blob: 與 'self'（相容任意順序）
 const workerSrcMatch = csp.match(/worker-src\s+([^;]+)/i);
 if (
   !workerSrcMatch ||
@@ -71,8 +73,8 @@ if (dangerousInline.length > 0) {
 // ==========================================
 // 3. Base Prefix 與靜態資源引用檢查
 // ==========================================
-if (isCI && !html.includes(basePrefix)) {
-  console.error(`❌ Base path "${basePrefix}" not applied in CI build.`);
+if (!html.includes(basePrefix)) {
+  console.error(`❌ Base path "${basePrefix}" not applied in build HTML.`);
   process.exit(1);
 }
 
@@ -86,11 +88,11 @@ const badBase = [];
 
 for (const url of assetRefs) {
   if (url.startsWith('/')) {
-    if (isCI && !url.startsWith(basePrefix)) {
+    if (!url.startsWith(basePrefix)) {
       badBase.push(url);
       continue;
     }
-    const rel = url.startsWith(basePrefix) ? url.slice(basePrefix.length) : url.slice(1);
+    const rel = url.slice(basePrefix.length);
     if (rel && !existsSync(join(distDir, rel))) missing.push(url);
   } else {
     if (!existsSync(join(distDir, url))) missing.push(url);
@@ -98,7 +100,7 @@ for (const url of assetRefs) {
 }
 
 if (badBase.length > 0) {
-  console.error(`❌ CI build has absolute paths not under "${basePrefix}":`);
+  console.error(`❌ Build has absolute paths not under "${basePrefix}":`);
   badBase.forEach((u) => console.error(`  - ${u}`));
   process.exit(1);
 }
@@ -109,15 +111,25 @@ if (missing.length > 0) {
 }
 
 // ==========================================
-// 4. 字體資源存在性
+// 4. PWA 核心資源與字體存在性檢查 (擴充)
 // ==========================================
-if (!existsSync(join(distDir, 'fonts', 'NotoSansMath-Regular.woff'))) {
-  console.error('❌ Font "NotoSansMath-Regular.woff" missing in dist/fonts/');
-  process.exit(1);
+const requiredAssets = [
+  join('fonts', 'NotoSansMath-Regular.woff'),
+  'sw.js',
+  'manifest.json',
+  'JARQubitLab192icon.png',
+  'JARQubitLab512icon.png'
+];
+
+for (const asset of requiredAssets) {
+  if (!existsSync(join(distDir, asset))) {
+    console.error(`❌ Core asset missing in dist: ${asset}`);
+    process.exit(1);
+  }
 }
 
 // ==========================================
-// 5. 原始碼未抽換環境變數語法掃描
+// 5. 原始碼未抽換環境變數語法掃描 (精準優化)
 // ==========================================
 function scanJSFilesForSecrets(dir) {
   const files = readdirSync(dir);
@@ -127,8 +139,11 @@ function scanJSFilesForSecrets(dir) {
       scanJSFilesForSecrets(fullPath);
     } else if (extname(fullPath) === '.js') {
       const content = readFileSync(fullPath, 'utf8');
-      if (content.includes('import.meta.env.') || content.includes('process.env.')) {
-        console.error(`❌ Potential environment variable leak detected in: ${fullPath}`);
+      // 🌟 優化 3：精準捕捉 Vite 構建遺漏的原始 Token，避免誤殺合法字串
+      const leakMatch = content.match(/(import\.meta\.env\.[a-zA-Z0-9_]+|process\.env\.[a-zA-Z0-9_]+)/);
+      if (leakMatch) {
+        console.error(`❌ Unreplaced environment variable token detected in: ${fullPath}`);
+        console.error(`   -> Found: ${leakMatch[1]}`);
         process.exit(1);
       }
     }
@@ -142,5 +157,5 @@ scanJSFilesForSecrets(distDir);
 console.log('✅ Build verification passed:');
 console.log('  - CSP Directives valid');
 console.log('  - 0 Inline Scripts');
-console.log('  - Asset References & Fonts Resolved');
+console.log('  - Asset References, Fonts & PWA Manifest Resolved');
 console.log('  - No Environment Variables Leaked');
