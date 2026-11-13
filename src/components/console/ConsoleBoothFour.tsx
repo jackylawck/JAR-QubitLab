@@ -2,7 +2,7 @@
 /*
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
- * Theme: EVA-00 Soul Transfer & MAGI Transmission Console
+ * Description: Booth 4 Quantum Teleportation & No-Cloning Theorem Control Console
  */
 import { useRef, useEffect, useCallback } from 'react';
 import { useTeleportStore } from '../../store/teleportStore';
@@ -81,40 +81,38 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
     phase === 'failed' && lastUserBits !== null && classicalBits !== null
       ? isBlindMode && failedCount === 1
         ? locale === 'zh'
-          ? '❌ 修正排斥。請觀察空殼（實體柱）與目標靈魂（幽靈殼）的差異：高度不同需 X 閘，顏色相反需 Z 閘。'
-          : "❌ Rejection. Compare solid pillars with the ghost target: height difference needs X, color opposition needs Z."
+          ? '❌ 修正閘不正確。請對比 Bob 的實體柱與目標態（幽靈殼）的差異：高度不同需 X 閘，相位相反需 Z 閘。'
+          : "❌ Incorrect gate. Compare Bob's solid pillars with the ghost target: height difference needs X, phase opposition needs Z."
         : locale === 'zh'
-        ? `❌ 你輸入了 [${isBlindMode ? '?' : BIT_LABELS[lastUserBits]}] ${CORRECTION_GATES[lastUserBits]}，但 MAGI 正確解析應為 [${isBlindMode ? '?' : BIT_LABELS[classicalBits]}] ${CORRECTION_GATES[classicalBits]}。`
-        : `❌ You entered [${isBlindMode ? '?' : BIT_LABELS[lastUserBits]}] ${CORRECTION_GATES[lastUserBits]}, but MAGI parsed [${isBlindMode ? '?' : BIT_LABELS[classicalBits]}] ${CORRECTION_GATES[classicalBits]}.`
+        ? `❌ 你選擇了 [${isBlindMode ? '?' : BIT_LABELS[lastUserBits]}] ${CORRECTION_GATES[lastUserBits]}，但正確應為 [${isBlindMode ? '?' : BIT_LABELS[classicalBits]}] ${CORRECTION_GATES[classicalBits]}。`
+        : `❌ You selected [${isBlindMode ? '?' : BIT_LABELS[lastUserBits]}] ${CORRECTION_GATES[lastUserBits]}, but the correct gate is [${isBlindMode ? '?' : BIT_LABELS[classicalBits]}] ${CORRECTION_GATES[classicalBits]}.`
       : null;
 
   return (
     <div className="w-full max-w-4xl mx-auto h-full flex flex-col pointer-events-auto transition-all select-none">
-      
-      {/* 頂部：EVA-00 傳輸狀態列 */}
+      {/* 頂部：量子隱形傳態協定狀態列 */}
       <div className="flex justify-between items-end mb-2 px-2 pb-2 border-b border-slate-800">
         <div className="flex items-baseline gap-2 sm:gap-4 text-xs font-mono">
-          <span className="text-slate-400">PROTOCOL:</span>
-          <span className="text-orange-500 font-bold uppercase">EVA-00 TRANSFER ({phase})</span>
+          <span className="text-slate-400">TELEPORT PROTOCOL:</span>
+          <span className="text-orange-500 font-bold uppercase">{phase}</span>
         </div>
 
         <div className="flex gap-2">
-          {/* 盲測模式 / 傀儡系統 (Dummy System) */}
           <button
+            type="button"
             onClick={() => executeAction(100, toggleBlindMode, () => sound.playTick(0))}
             className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-colors ${
-              isBlindMode 
-                ? 'bg-orange-950/50 text-orange-400 border-orange-900/50 shadow-[0_0_8px_rgba(249,115,22,0.3)]' 
+              isBlindMode
+                ? 'bg-orange-950/50 text-orange-400 border-orange-900/50 shadow-[0_0_8px_rgba(249,115,22,0.3)]'
                 : 'bg-slate-900 text-slate-500 border-slate-800'
             }`}
           >
-            {isBlindMode ? (locale === 'zh' ? 'DUMMY SYSTEM: ON' : 'BLIND (DUMMY): ON') : locale === 'zh' ? 'DUMMY SYSTEM: OFF' : 'BLIND: OFF'}
+            {isBlindMode ? (locale === 'zh' ? '盲測模式: ON' : 'BLIND MODE: ON') : locale === 'zh' ? '盲測模式: OFF' : 'BLIND MODE: OFF'}
           </button>
 
-          {/* MAGI 經典位元訊號 */}
           {classicalBits !== null && !isBlindMode && (
             <span className="text-[10px] font-mono text-amber-400 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-900/50">
-              MAGI SIGNAL: {BIT_LABELS[classicalBits]}
+              CLASSICAL BITS: {BIT_LABELS[classicalBits]}
             </span>
           )}
         </div>
@@ -125,8 +123,8 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
           <div className="text-xs text-slate-300 leading-relaxed overflow-y-auto max-h-[140px] py-2 px-3 font-sans flex-1 border border-slate-800/60 rounded-xl bg-slate-900/40">
             <p>
               {locale === 'zh'
-                ? '量子隱形傳態利用預先共享的貝爾糾纏對與兩位元經典通訊（MAGI），將未知量子態（靈魂）從 Alice 精確轉移至 Bob（空殼容器），過程中舊態必須坍縮（不可克隆定理）。'
-                : 'Quantum teleportation reconstructs an unknown state (Soul) from Alice to Bob (Vessel) using a shared Bell pair and MAGI classical bits, strictly obeying the No-Cloning Theorem.'}
+                ? '量子隱形傳態利用預先共享的貝爾糾纏對（q1, q2）與兩位元經典通訊，將未知量子態 |ψ⟩ 從 Alice（q0）精確重建至 Bob（q2），過程中 Alice 端的原始量子態必然坍縮（嚴格遵守不可克隆定理）。'
+                : 'Quantum teleportation reconstructs an unknown state |ψ⟩ from Alice (q0) to Bob (q2) using a shared Bell pair (q1, q2) and 2 classical bits, strictly obeying the No-Cloning Theorem.'}
             </p>
           </div>
         ) : (
@@ -134,15 +132,15 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
             {phase === 'prepare' && (
               <div className="flex flex-col gap-3 h-full justify-center px-2">
                 <div className="grid grid-cols-2 gap-6">
-                  {/* Alice (山吹橙) 狀態準備 */}
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono text-slate-400 flex justify-between">
-                      <span>θ (Latitude)</span>
+                      <span>θ (Polar Angle)</span>
                       <span className="text-orange-400 font-bold">{(aliceTheta / Math.PI).toFixed(2)}π</span>
                     </label>
                     <input
                       type="range"
-                      min="0" max="100"
+                      min="0"
+                      max="100"
                       value={Math.round((aliceTheta / Math.PI) * 100)}
                       onChange={(e) => handleThetaChange(e.target.value)}
                       className="accent-orange-500 cursor-pointer"
@@ -150,26 +148,27 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono text-slate-400 flex justify-between">
-                      <span>φ (Longitude)</span>
+                      <span>φ (Azimuthal Phase)</span>
                       <span className="text-orange-400 font-bold">{(alicePhi / Math.PI).toFixed(2)}π</span>
                     </label>
                     <input
                       type="range"
-                      min="0" max="100"
+                      min="0"
+                      max="100"
                       value={Math.round((alicePhi / (2 * Math.PI)) * 100)}
                       onChange={(e) => handlePhiChange(e.target.value)}
                       className="accent-orange-500 cursor-pointer"
                     />
                   </div>
                 </div>
-                
-                {/* 啟動連結按鈕 (EVA-00 主題色) */}
+
                 <button
+                  type="button"
                   onClick={() => executeAction(400, createBellPair, () => sound.playMerge())}
                   disabled={isAnimating}
                   className="mt-3 py-3.5 bg-orange-950/40 border border-orange-600/50 rounded-xl hover:bg-orange-900/60 hover:border-orange-500 transition-all active:scale-95 text-sm font-bold text-orange-400 shadow-lg shadow-orange-950/50 disabled:opacity-50"
                 >
-                  {locale === 'zh' ? '啟動 MAGI 糾纏連結 (q1, q2)' : 'Establish MAGI Link (q1, q2)'}
+                  {locale === 'zh' ? '建立通訊糾纏對 (q1, q2)' : 'Create Bell Pair (q1, q2)'}
                 </button>
               </div>
             )}
@@ -178,15 +177,16 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
               <div className="flex flex-col items-center justify-center h-full px-2">
                 <p className="text-xs text-slate-400 mb-5 text-center leading-relaxed">
                   {locale === 'zh'
-                    ? '連結已建立。執行測量後，Alice 的本體將坍縮，並透過 MAGI 傳送 2-bit 經典訊號至 Bob 端的空殼。'
-                    : "Link established. Measurement will collapse Alice's state and transmit 2-bit classical signal via MAGI to Bob's vessel."}
+                    ? '貝爾糾纏對已建立。執行貝爾基測量後，Alice 的原始量子態將坍縮，並透過經典通道傳送 2-bit 測量結果至 Bob 端。'
+                    : "Bell pair ready. Bell-basis measurement will collapse Alice's state and transmit 2 classical bits to Bob."}
                 </p>
                 <button
+                  type="button"
                   onClick={() => executeAction(600, measureAlice, () => sound.playTeleport())}
                   disabled={isAnimating}
                   className="w-full py-4 bg-amber-950/40 border border-amber-600/50 rounded-xl hover:bg-amber-900/60 hover:border-amber-500 transition-all active:scale-95 text-[13px] sm:text-sm font-bold text-amber-400 shadow-lg shadow-amber-950/50 disabled:opacity-50"
                 >
-                  {locale === 'zh' ? '執行靈魂轉移 (貝爾測量)' : 'Execute Soul Transfer (Bell Measurement)'}
+                  {locale === 'zh' ? '執行貝爾測量 (發送經典位元)' : 'Perform Bell Measurement'}
                 </button>
               </div>
             )}
@@ -196,16 +196,16 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
                 <p className="text-[10px] sm:text-xs text-sky-400 mb-3 text-center animate-pulse font-mono">
                   {isBlindMode
                     ? locale === 'zh'
-                      ? 'Bob 已收到 MAGI 訊號。請透過視覺，選擇能將「空殼(實體)」吻合至「目標(幽靈)」的修正閘：'
-                      : 'MAGI signal received. Visually select the gate to match the solid Vessel to the Ghost target:'
+                      ? 'Bob 已收到經典位元。請對照實體柱與目標態（幽靈殼），選擇對應的么正修正閘：'
+                      : 'Classical bits received. Compare solid pillars with ghost holograms to select the unitary correction gate:'
                     : locale === 'zh'
-                    ? `Bob 收到 MAGI 訊號 [ ${BIT_LABELS[classicalBits]} ]，請注入對應的修正閘：`
-                    : `Bob received MAGI [ ${BIT_LABELS[classicalBits]} ]. Inject correction gate:`}
+                    ? `Bob 收到經典位元 [ ${BIT_LABELS[classicalBits]} ]，請施加對應的么正修正閘：`
+                    : `Bob received classical bits [ ${BIT_LABELS[classicalBits]} ]. Apply unitary correction gate:`}
                 </p>
-                {/* 修正閘 (Bob 端的初期藍) */}
                 <div className="grid grid-cols-2 gap-2.5">
                   {[0, 1, 2, 3].map((bits) => (
                     <button
+                      type="button"
                       key={bits}
                       onClick={() => handleApplyCorrection(bits as 0 | 1 | 2 | 3)}
                       disabled={isAnimating}
@@ -227,27 +227,31 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
               >
                 <p className={`text-sm font-bold mb-1 ${phase === 'success' ? 'text-orange-400' : 'text-rose-400'}`}>
                   {phase === 'success'
-                    ? locale === 'zh' ? '✨ 靈魂轉移成功！' : '✨ Soul Transfer Complete!'
-                    : locale === 'zh' ? '❌ 轉移失敗 (排斥反應)' : '❌ Transfer Failed (Rejection)'}
+                    ? locale === 'zh'
+                      ? '✨ 量子隱形傳態成功！'
+                      : '✨ Teleportation Successful!'
+                    : locale === 'zh'
+                    ? '❌ 么正修正錯誤'
+                    : '❌ Incorrect Unitary Correction'}
                 </p>
 
                 <div className="flex flex-col items-center mb-3 px-4 text-center">
                   <span className={`text-[10px] font-mono mb-1 ${fidelity > 0.99 ? 'text-orange-400' : 'text-rose-400'}`}>
-                    SYNC RATIO (FIDELITY) = {(fidelity * 100).toFixed(1)}%
+                    STATE FIDELITY |⟨ψ_orig|ψ_Bob⟩|² = {(fidelity * 100).toFixed(1)}%
                   </span>
 
                   {phase === 'failed' && fidelity > 0.99 ? (
                     <p className="text-[10px] text-amber-400 leading-tight">
                       {locale === 'zh'
-                        ? '⚠️ 巧合：注入的修正閘錯誤，但設定的初始態恰好對這個錯誤免疫。請嘗試其他 θ/φ 角度！'
-                        : '⚠️ Coincidence: Wrong gate injected, but initial state was immune. Try another angle!'}
+                        ? '⚠️ 巧合：所選修正閘錯誤，但設定的初始態恰好位於該算符的本徵態上。請嘗試其他 θ/φ 角度！'
+                        : '⚠️ Coincidence: Wrong gate selected, but the initial state was an eigenstate of the error operator. Try another angle!'}
                     </p>
                   ) : (
                     <p className="text-[10px] text-slate-400 leading-tight">
                       {phase === 'success'
                         ? locale === 'zh'
-                          ? 'Bob 的空殼已完美重塑為 Alice 最初設定的靈魂目標態。'
-                          : "Bob's vessel collapsed perfectly into Alice's initial soul state."
+                          ? 'Bob 的量子態已精確重建為 Alice 最初製備的未知量子態。'
+                          : "Bob's qubit has been faithfully reconstructed into Alice's initial state."
                         : failureMessage}
                     </p>
                   )}
@@ -256,13 +260,15 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
                 {phase === 'failed' && isBlindMode && failedCount < 2 ? (
                   <div className="flex gap-4">
                     <button
+                      type="button"
                       onClick={() => executeAction(300, retryCorrection, () => sound.playLever())}
                       disabled={isAnimating}
                       className="px-6 py-1.5 bg-amber-950/50 text-amber-400 border border-amber-900/50 rounded hover:bg-amber-900/50 transition-colors text-xs font-bold disabled:opacity-50"
                     >
-                      {locale === 'zh' ? '重新修正' : 'RETRY'}
+                      {locale === 'zh' ? '再試一次' : 'RETRY'}
                     </button>
                     <button
+                      type="button"
                       onClick={() => executeAction(300, reset, () => sound.playLever())}
                       disabled={isAnimating}
                       className="px-6 py-1.5 bg-slate-900 border border-slate-700 text-slate-400 rounded hover:bg-slate-800 transition-colors text-xs disabled:opacity-50"
@@ -272,11 +278,12 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
                   </div>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => executeAction(300, reset, () => sound.playLever())}
                     disabled={isAnimating}
                     className="px-6 py-1.5 bg-slate-900 border border-slate-600 rounded hover:bg-white hover:text-black transition-colors text-[11px] font-bold font-mono disabled:opacity-50"
                   >
-                    {locale === 'zh' ? '重置系統 (RESET)' : 'RESET SYSTEM'}
+                    {locale === 'zh' ? '重置實驗 (RESET)' : 'RESET PROTOCOL'}
                   </button>
                 )}
               </div>
@@ -288,17 +295,19 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
       {/* 底部功能列 */}
       <div className="flex justify-between items-center mt-2 px-2">
         <button
+          type="button"
           onClick={() => setIsExplaining(!isExplaining)}
           className="text-[10px] text-sky-400 hover:text-sky-300 font-mono transition-colors active:scale-95"
         >
-          [ {isExplaining ? (locale === 'zh' ? '關閉解析' : 'CLOSE THEORY') : locale === 'zh' ? '戰術解析' : 'THEORY'} ]
+          [ {isExplaining ? (locale === 'zh' ? '關閉解析' : 'CLOSE THEORY') : locale === 'zh' ? '原理解析' : 'THEORY'} ]
         </button>
         <button
+          type="button"
           onClick={() => executeAction(300, reset, () => sound.playLever())}
           disabled={isAnimating}
           className="text-[10px] text-slate-500 hover:text-white transition-colors font-mono active:scale-95 disabled:opacity-30"
         >
-          [ ABORT PROTOCOL ]
+          [ RESET PROTOCOL ]
         </button>
       </div>
     </div>
