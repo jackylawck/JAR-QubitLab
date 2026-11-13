@@ -7,9 +7,15 @@ import { useRef, useCallback, useEffect } from 'react';
 
 interface UsePointerDialOptions {
   onAngleChange: (angleRad: number) => void;
-  snapAngles?: number[]; // 例如 [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]
+  snapAngles?: number[]; 
   hapticEnabled?: boolean;
 }
+
+// 🌟 優化 2：Zero-GC 靜態震動波形陣列，避免 120Hz 拖曳時反覆建立陣列物件
+const HAPTIC_MECHANICAL_CLICK = 10;
+const HAPTIC_MAGNETIC_SNAP = [15, 30, 15];
+
+const TWO_PI = 2 * Math.PI;
 
 export function usePointerDial({
   onAngleChange,
@@ -20,22 +26,22 @@ export function usePointerDial({
   const centerPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastSnap = useRef<number | null>(null);
 
-  // 🌟 優化 1：Latest Ref Pattern
-  // 將回調與配置快取至 Ref，徹底斬斷 useCallback 對外部 Props 的依賴
-  const configRef = useRef({ onAngleChange, snapAngles });
+  // Latest Ref Pattern: 統一快取外部狀態，杜絕 React 閉包過期陷阱
+  const configRef = useRef({ onAngleChange, snapAngles, hapticEnabled });
   useEffect(() => {
-    configRef.current = { onAngleChange, snapAngles };
-  }, [onAngleChange, snapAngles]);
+    configRef.current = { onAngleChange, snapAngles, hapticEnabled };
+  }, [onAngleChange, snapAngles, hapticEnabled]);
 
+  // 🌟 優化 3：零依賴 (Zero Dependency) 的震動回調
   const triggerHaptic = useCallback((pattern: number | number[] = 12) => {
-    if (hapticEnabled && typeof navigator !== 'undefined' && navigator.vibrate) {
+    if (configRef.current.hapticEnabled && typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate(pattern);
     }
-  }, [hapticEnabled]);
+  }, []); // 依賴為空，永遠不會在元件生命週期中重建
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLElement>) => {
-    // 💡 提示：建議在套用此 Hook 的 DOM 元素上加上 CSS `touch-action: none` 
-    // 來取代 JS 的 e.preventDefault()，這能獲得更極致的原生效能。
+    // 💡 建議在綁定此 Hook 的 DOM 上設定 CSS `touch-action: none` 
+    // 以獲取最順滑的 120Hz 瀏覽器原生效能
     const target = e.currentTarget as HTMLElement;
     activePointerId.current = e.pointerId;
     target.setPointerCapture(e.pointerId);
@@ -46,7 +52,7 @@ export function usePointerDial({
       y: rect.top + rect.height / 2,
     };
 
-    triggerHaptic(10); // 按下時的機械觸感
+    triggerHaptic(HAPTIC_MECHANICAL_CLICK); 
   }, [triggerHaptic]);
 
   const onPointerMove = useCallback((e: React.PointerEvent<HTMLElement>) => {
@@ -55,39 +61,46 @@ export function usePointerDial({
     const dx = e.clientX - centerPos.current.x;
     const dy = e.clientY - centerPos.current.y;
 
-    // 🌟 優化 2：免開根號的效能防抖
-    // 12px 的盲區 (12 * 12 = 144)，避開 Math.hypot 帶來的浮點數運算開銷
+    // 免開根號防抖：12px 半徑的盲區 (144) 避免浮點開銷與中心奇異點抖動
     if (dx * dx + dy * dy < 144) return;
 
     let angle = Math.atan2(dy, dx);
-    if (angle < 0) angle += 2 * Math.PI;
+    if (angle < 0) angle += TWO_PI;
 
     const { snapAngles: currentSnaps, onAngleChange: currentOnChange } = configRef.current;
 
-    // 階梯式卡榫阻尼判定 (Snap Haptics)
+    // 🌟 優化 1：環形角域磁吸判定 (Circular Modulo Snap)
+    // 解決 359度 與 0度 邊界無法互相磁吸的 Bug
     for (const snap of currentSnaps) {
-      if (Math.abs(angle - snap) < 0.08 && lastSnap.current !== snap) {
+      const diff = Math.abs(angle - snap);
+      const circularDiff = Math.min(diff, TWO_PI - diff); // 取最短角距
+
+      if (circularDiff < 0.08 && lastSnap.current !== snap) {
         lastSnap.current = snap;
-        angle = snap; // 磁吸對齊卡榫
-        triggerHaptic([15, 30, 15]); // 雙階梯微震
+        angle = snap; // 完美磁吸對齊
+        triggerHaptic(HAPTIC_MAGNETIC_SNAP); 
         break;
       }
     }
     
     // 脫離卡榫區間時釋放狀態
-    if (lastSnap.current !== null && Math.abs(angle - lastSnap.current) >= 0.12) {
-      lastSnap.current = null;
+    if (lastSnap.current !== null) {
+      const diff = Math.abs(angle - lastSnap.current);
+      const circularDiff = Math.min(diff, TWO_PI - diff);
+      if (circularDiff >= 0.12) {
+        lastSnap.current = null;
+      }
     }
 
     currentOnChange(angle);
-  }, [triggerHaptic]); // 依賴陣列極度純淨，不會隨父組件 Render 重建
+  }, [triggerHaptic]); 
 
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLElement>) => {
     if (e.pointerId !== activePointerId.current) return;
     activePointerId.current = null;
     lastSnap.current = null;
     
-    // 🌟 優化 3：安全、無錯誤拋出的 Capture 釋放機制
+    // 安全、無錯誤拋出的 Capture 釋放機制
     const target = e.currentTarget as HTMLElement;
     if (target.hasPointerCapture(e.pointerId)) {
       target.releasePointerCapture(e.pointerId);
