@@ -79,7 +79,7 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col gap-3 select-none">
-      {/* 1. 即時波函數機率分佈儀表板（EVA-01 裝甲紫 #a855f7 vs 螢光青 #22d3ee） */}
+      {/* 1. 即時波函數機率分佈儀表板（EVA-01 裝甲紫 #a855f7 vs 螢光青綠 #10b981） */}
       <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 shadow-xl">
         <div className="flex items-center justify-between text-xs sm:text-sm font-medium mb-2">
           {/* 路徑 A：初號機裝甲紫 (#a855f7) */}
@@ -97,18 +97,18 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
             className={`px-2 py-0.5 rounded-full text-[11px] font-mono border transition-colors ${
               isSuperposition
                 ? 'bg-purple-500/15 text-purple-200 border-purple-500/40'
-                : 'bg-cyan-500/15 text-cyan-200 border-cyan-500/40'
+                : 'bg-emerald-500/15 text-emerald-200 border-emerald-500/40'
             }`}
           >
             {isSuperposition ? '|ψ⟩ = (|0⟩ + |1⟩)/√2' : pct0 >= 50 ? '|0⟩' : '|1⟩'}
           </span>
 
-          {/* 路徑 B：初號機螢光青 (#22d3ee) */}
-          <div className="flex items-center gap-2 text-cyan-300">
-            <span className="font-mono font-bold text-[#22d3ee] tabular-nums">{pct1}%</span>
+          {/* 路徑 B：初號機螢光青綠 (#10b981) */}
+          <div className="flex items-center gap-2 text-emerald-300">
+            <span className="font-mono font-bold text-[#10b981] tabular-nums">{pct1}%</span>
             <span>{t.common.pathB}</span>
             <span
-              className="w-2.5 h-2.5 rounded-full bg-[#22d3ee] shadow-[0_0_8px_#22d3ee]"
+              className="w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-[0_0_8px_#10b981]"
               aria-hidden="true"
             />
           </div>
@@ -128,7 +128,7 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
             style={{ width: `${pct0}%` }}
           />
           <div
-            className="h-full bg-gradient-to-l from-cyan-500 to-[#22d3ee] transition-all duration-300 ease-out"
+            className="h-full bg-gradient-to-l from-emerald-500 to-[#10b981] transition-all duration-300 ease-out"
             style={{ width: `${pct1}%` }}
           />
         </div>
@@ -154,8 +154,8 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
           onClick={handleCollapse}
           disabled={isAnimating}
           className="min-h-[46px] px-3 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-slate-950
-                     bg-[#22d3ee] border border-cyan-200/70 shadow-lg shadow-cyan-950/50
-                     hover:bg-cyan-300 active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none
+                     bg-[#10b981] border border-emerald-200/70 shadow-lg shadow-emerald-950/50
+                     hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none
                      transition-all flex items-center justify-center gap-1.5"
         >
           <span aria-hidden="true">📸</span>
