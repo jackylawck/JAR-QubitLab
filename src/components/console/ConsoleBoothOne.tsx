@@ -22,7 +22,7 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
   const locale = useLocaleStore((s) => s.locale);
   const { isAnimating, requestActionLock } = useAnimationLock();
 
-  // 🌟 優化 1：分離 Selector，避免展台 2 干涉態變動引發此元件無效重繪
+  // 細化 Selector，避免展台 2 干涉態變動引發無效重繪
   const amp0 = useQuantumStore((s) => s.amplitudes[0]?.modulus ?? 0);
   const amp1 = useQuantumStore((s) => s.amplitudes[1]?.modulus ?? 0);
   const applyGate = useQuantumStore((s) => s.applyGate);
@@ -31,7 +31,6 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
 
   const actionTimerRef = useRef<number | null>(null);
 
-  // 確保元件卸載時安全清除所有掛起的計時器與全域鎖
   useEffect(() => {
     return () => {
       if (actionTimerRef.current !== null) {
@@ -41,7 +40,7 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
     };
   }, []);
 
-  // 計算邊際機率 P(|0⟩) 與 P(|1⟩) (嚴格遵守 noUncheckedIndexedAccess 且消去 2 號位與 3 號位的非必要依賴)
+  // 計算邊際機率 P(|0⟩) 與 P(|1⟩)
   const p0Raw = amp0 ** 2;
   const p1Raw = amp1 ** 2;
 
@@ -53,7 +52,6 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
   const isSuperposition = p0 > 0.01 && p1 > 0.01;
   const resetLabel = locale === 'en' ? 'Reset' : '重置';
 
-  // 🌟 優化 2：將動作觸發與安全解鎖邏輯收斂，避免閉包陷阱與重複程式碼
   const executeAction = useCallback(
     (durationMs: number, action: () => void, soundEffect: () => void) => {
       if (isAnimating) return;
@@ -66,8 +64,6 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
       soundEffect();
       action();
 
-      // 由於 requestActionLock 內部已處理逾時自動解鎖，此處不再手動管理 lockReleaseRef，
-      // 僅需確保計時器指標在時間到後歸零，維持狀態一致性。
       actionTimerRef.current = window.setTimeout(() => {
         actionTimerRef.current = null;
       }, durationMs);
@@ -75,9 +71,10 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
     [isAnimating, requestActionLock]
   );
 
-  const handleHadamard = () => executeAction(400, () => applyGate('H', [0]), sound.playLever);
-  const handleCollapse = () => executeAction(350, collapse, sound.playShutter);
-  const handleReset = () => executeAction(250, reset, sound.playLever);
+  // 透過箭頭函式呼叫 sound.playLever() / sound.playShutter()，確保內部 this 指向 sound 實例
+  const handleHadamard = () => executeAction(400, () => applyGate('H', [0]), () => sound.playLever());
+  const handleCollapse = () => executeAction(350, collapse, () => sound.playShutter());
+  const handleReset = () => executeAction(250, reset, () => sound.playLever());
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col gap-3 select-none">
@@ -148,7 +145,7 @@ export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
                      transition-all flex items-center justify-center gap-1.5"
         >
           <span aria-hidden="true">🕹️</span>
-          <span className="truncate">{t.common.splitBeam} (H)</span>
+          <span className="truncate">{t.common.splitBeam}</span>
         </button>
 
         <button
