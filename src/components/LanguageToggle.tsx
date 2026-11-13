@@ -2,23 +2,24 @@
 /*
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+ * Description: Global Language Toggle (Academic UI)
  */
+import { useCallback } from 'react';
 import { useLocaleStore } from '../store/localeStore';
 import { sound } from '../audio/soundEngine';
 
 export const LanguageToggle = () => {
-  // 🌟 1. 精準訂閱 (Selector)：避免全量解構，防止未來 localeStore 擴充時觸發無效重渲染
+  // 🌟 1. 精準訂閱 (Selector)：避免全量解構，防止未來 localeStore 擴充時觸發無效重繪
   const locale = useLocaleStore((s) => s.locale);
   const toggleLocale = useLocaleStore((s) => s.toggleLocale);
 
-  // 🌟 2. 型別安全：React 的 onClick 永遠只會派發 MouseEvent（即使是手指點擊）。
-  // TouchEvent 只能綁定在 onTouchStart/End 上，此處傳入 MouseEvent 才是完全正確的型別。
-  const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+  // 🌟 2. 效能與型別安全：使用 useCallback 防止每次 Render 重建函式
+  const handleToggle = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation(); 
     sound.unlock();      
     sound.playTick(2);   
     
-    // 增加 try...catch 防堵極端 Webview 環境下 navigator 屬性存取報錯
+    // 防堵極端 Webview / Safari 環境下 navigator.vibrate 的存取報錯
     try {
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate(10); 
@@ -28,13 +29,12 @@ export const LanguageToggle = () => {
     }
     
     toggleLocale();
-  };
+  }, [toggleLocale]);
 
-  // 🌟 3. 徹底阻絕 3D 視角穿透：OrbitControls 監聽的是 PointerEvent。
-  // 單靠攔截 PointerDown 不夠，連同 PointerUp 一起攔截，確保在按鈕上滑動時不會意外轉動背後的星空。
-  const handlePointer = (e: React.PointerEvent<HTMLButtonElement>) => {
+  // 🌟 3. 徹底阻絕 3D 視角穿透：攔截 PointerDown / PointerUp，避免轉動背後的三維星空
+  const handlePointer = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-  };
+  }, []);
 
   return (
     <button
