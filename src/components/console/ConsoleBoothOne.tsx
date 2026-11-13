@@ -4,83 +4,80 @@
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
  * Description: Booth 1 Superposition & Wavefunction Collapse Control Console (EVA-01 Theme)
  */
-import { useEffect, useRef } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useQuantumStore } from '../../store/quantumStore';
 import { useLocaleStore } from '../../store/localeStore';
 import { sound } from '../../audio/soundEngine';
-import { acquireAnimationLock, useAnimationLock } from '../../hooks/useAnimationLock';
+import { useAnimationLock } from '../../hooks/useAnimationLock';
 import { QUANTUM_CONFIG } from '../../constants';
 
-export const ConsoleBoothOne = () => {
-  const t = useLocaleStore((s) => s.t);
-  const isLocked = useAnimationLock();
+export interface ConsoleBoothOneProps {
+  isExplaining?: boolean;
+  setIsExplaining?: Dispatch<SetStateAction<boolean>>;
+}
 
-  const amplitudes = useQuantumStore((s) => s.amplitudes);
+export const ConsoleBoothOne = (_props: ConsoleBoothOneProps) => {
+  const t = useLocaleStore((s) => s.t);
+  const locale = useLocaleStore((s) => s.locale);
+  const { isAnimating, requestActionLock } = useAnimationLock();
+
+  // 🌟 優化 1：分離 Selector，避免展台 2 干涉態變動引發此元件無效重繪
+  const amp0 = useQuantumStore((s) => s.amplitudes[0]?.modulus ?? 0);
+  const amp1 = useQuantumStore((s) => s.amplitudes[1]?.modulus ?? 0);
   const applyGate = useQuantumStore((s) => s.applyGate);
   const collapse = useQuantumStore((s) => s.collapse);
   const reset = useQuantumStore((s) => s.reset);
 
   const actionTimerRef = useRef<number | null>(null);
-  const lockReleaseRef = useRef<(() => void) | null>(null);
 
-  // 嚴格遵守 noUncheckedIndexedAccess 防護並計算邊際機率 P(|0⟩) 與 P(|1⟩)
-  const p0Raw = (amplitudes[0]?.modulus ?? 0) ** 2 + (amplitudes[1]?.modulus ?? 0) ** 2;
-  const p1Raw = (amplitudes[2]?.modulus ?? 0) ** 2 + (amplitudes[3]?.modulus ?? 0) ** 2;
+  // 確保元件卸載時安全清除所有掛起的計時器與全域鎖
+  useEffect(() => {
+    return () => {
+      if (actionTimerRef.current !== null) {
+        clearTimeout(actionTimerRef.current);
+        actionTimerRef.current = null;
+      }
+    };
+  }, []);
 
-  // 消除極微浮點數誤差並正規化顯示百分比
+  // 計算邊際機率 P(|0⟩) 與 P(|1⟩) (嚴格遵守 noUncheckedIndexedAccess 且消去 2 號位與 3 號位的非必要依賴)
+  const p0Raw = amp0 ** 2;
+  const p1Raw = amp1 ** 2;
+
   const p0 = p0Raw < QUANTUM_CONFIG.EPSILON ? 0 : Math.min(1, p0Raw);
   const p1 = p1Raw < QUANTUM_CONFIG.EPSILON ? 0 : Math.min(1, p1Raw);
   const pct0 = Math.round(p0 * 100);
   const pct1 = Math.round(p1 * 100);
 
-  // 判定目前是否處於有效疊加態（兩路機率皆大於 1%）
   const isSuperposition = p0 > 0.01 && p1 > 0.01;
+  const resetLabel = locale === 'en' ? 'Reset' : '重置';
 
-  // 卸載時確保釋放計時器與動畫全域鎖，杜絕狀態死鎖
-  useEffect(() => {
-    return () => {
-      if (actionTimerRef.current !== null) clearTimeout(actionTimerRef.current);
-      lockReleaseRef.current?.();
-      lockReleaseRef.current = null;
-    };
-  }, []);
+  // 🌟 優化 2：將動作觸發與安全解鎖邏輯收斂，避免閉包陷阱與重複程式碼
+  const executeAction = useCallback(
+    (durationMs: number, action: () => void, soundEffect: () => void) => {
+      if (isAnimating) return;
 
-  const triggerWithLock = (durationMs: number, action: () => void) => {
-    if (isLocked) return;
+      if (actionTimerRef.current !== null) {
+        clearTimeout(actionTimerRef.current);
+      }
 
-    action();
+      requestActionLock(durationMs);
+      soundEffect();
+      action();
 
-    lockReleaseRef.current?.();
-    if (actionTimerRef.current !== null) clearTimeout(actionTimerRef.current);
+      // 由於 requestActionLock 內部已處理逾時自動解鎖，此處不再手動管理 lockReleaseRef，
+      // 僅需確保計時器指標在時間到後歸零，維持狀態一致性。
+      actionTimerRef.current = window.setTimeout(() => {
+        actionTimerRef.current = null;
+      }, durationMs);
+    },
+    [isAnimating, requestActionLock]
+  );
 
-    lockReleaseRef.current = acquireAnimationLock();
-    actionTimerRef.current = window.setTimeout(() => {
-      lockReleaseRef.current?.();
-      lockReleaseRef.current = null;
-      actionTimerRef.current = null;
-    }, durationMs);
-  };
-
-  const handleHadamard = () => {
-    triggerWithLock(400, () => {
-      sound.playLever();
-      applyGate('H', [0]);
-    });
-  };
-
-  const handleCollapse = () => {
-    triggerWithLock(350, () => {
-      sound.playShutter();
-      collapse();
-    });
-  };
-
-  const handleReset = () => {
-    triggerWithLock(250, () => {
-      sound.playLever();
-      reset();
-    });
-  };
+  const handleHadamard = () => executeAction(400, () => applyGate('H', [0]), sound.playLever);
+  const handleCollapse = () => executeAction(350, collapse, sound.playShutter);
+  const handleReset = () => executeAction(250, reset, sound.playLever);
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col gap-3 select-none">
@@ -94,9 +91,7 @@ export const ConsoleBoothOne = () => {
               aria-hidden="true"
             />
             <span>{t.common.pathA}</span>
-            <span className="font-mono font-bold text-purple-400 tabular-nums">
-              {pct0}%
-            </span>
+            <span className="font-mono font-bold text-purple-400 tabular-nums">{pct0}%</span>
           </div>
 
           {/* 態向量狀態徽章 */}
@@ -112,9 +107,7 @@ export const ConsoleBoothOne = () => {
 
           {/* 路徑 B：初號機螢光青 (#22d3ee) */}
           <div className="flex items-center gap-2 text-cyan-300">
-            <span className="font-mono font-bold text-cyan-400 tabular-nums">
-              {pct1}%
-            </span>
+            <span className="font-mono font-bold text-cyan-400 tabular-nums">{pct1}%</span>
             <span>{t.common.pathB}</span>
             <span
               className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]"
@@ -143,13 +136,12 @@ export const ConsoleBoothOne = () => {
         </div>
       </div>
 
-      {/* 2. 核心量子操作按鈕列（最小觸控熱區 >= 44px，具備防連點動畫鎖） */}
+      {/* 2. 核心量子操作按鈕列 */}
       <div className="grid grid-cols-3 gap-2.5">
-        {/* 施加 Hadamard 分光閘 */}
         <button
           type="button"
           onClick={handleHadamard}
-          disabled={isLocked}
+          disabled={isAnimating}
           className="min-h-[46px] px-3 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-white
                      bg-purple-600/90 border border-purple-400/40 shadow-lg shadow-purple-950/50
                      hover:bg-purple-500 active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none
@@ -159,11 +151,10 @@ export const ConsoleBoothOne = () => {
           <span className="truncate">{t.common.splitBeam} (H)</span>
         </button>
 
-        {/* 觀測坍縮快門 */}
         <button
           type="button"
           onClick={handleCollapse}
-          disabled={isLocked}
+          disabled={isAnimating}
           className="min-h-[46px] px-3 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-slate-950
                      bg-cyan-400 border border-cyan-200/60 shadow-lg shadow-cyan-950/50
                      hover:bg-cyan-300 active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none
@@ -173,18 +164,17 @@ export const ConsoleBoothOne = () => {
           <span className="truncate">{t.common.measure}</span>
         </button>
 
-        {/* 重置至基態 |0⟩ */}
         <button
           type="button"
           onClick={handleReset}
-          disabled={isLocked}
+          disabled={isAnimating}
           className="min-h-[46px] px-3 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-slate-200
                      bg-slate-800/90 border border-slate-700/80 shadow-lg
                      hover:bg-slate-700 active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none
                      transition-all flex items-center justify-center gap-1.5"
         >
           <span aria-hidden="true">↺</span>
-          <span className="truncate">{t.common.reset}</span>
+          <span className="truncate">{resetLabel}</span>
         </button>
       </div>
     </div>
