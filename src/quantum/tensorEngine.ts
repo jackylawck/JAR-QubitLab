@@ -57,7 +57,6 @@ export class TensorEngine {
     let bestIdx = 0;
     let bestModSq = -1;
     
-    // 🌟 優化 1：全面使用 ! 取代 ?? 0，消滅 V8 引擎分支預測開銷
     for (let i = 0; i < this.stateSize; i++) {
       const r = this.state[i * 2]!;
       const im = this.state[i * 2 + 1]!;
@@ -76,15 +75,24 @@ export class TensorEngine {
 
     const refR = this.state[refIdx * 2]!;
     const refI = this.state[refIdx * 2 + 1]!;
-    const refPhase = Math.atan2(refI, refR);
-    const cos = Math.cos(-refPhase);
-    const sin = Math.sin(-refPhase);
+    
+    // 🌟 優化 2：微觀短路，規避極小值的三角函數運算與浮點噪音
+    let cos = 1;
+    let sin = 0;
+    if (Math.abs(refR) > 1e-10 || Math.abs(refI) > 1e-10) {
+      const refPhase = Math.atan2(refI, refR);
+      cos = Math.cos(-refPhase);
+      sin = Math.sin(-refPhase);
+    }
 
-    for (let i = 0; i < this.stateSize; i++) {
-      const r = this.state[i * 2]!;
-      const im = this.state[i * 2 + 1]!;
-      this.state[i * 2] = r * cos - im * sin;
-      this.state[i * 2 + 1] = r * sin + im * cos;
+    // 若基準相位的 cos = 1, sin = 0，代表無須修正，提早 return 節省整個狀態向量的遍歷
+    if (Math.abs(cos - 1) > 1e-10 || Math.abs(sin) > 1e-10) {
+      for (let i = 0; i < this.stateSize; i++) {
+        const r = this.state[i * 2]!;
+        const im = this.state[i * 2 + 1]!;
+        this.state[i * 2] = r * cos - im * sin;
+        this.state[i * 2 + 1] = r * sin + im * cos;
+      }
     }
 
     this.refIdx = refIdx;
@@ -150,9 +158,16 @@ export class TensorEngine {
   }
 
   public collapse(): number {
-    const rand = Math.random();
+    // 🌟 優化 1：雙次遍歷確保機率絕對歸一化，消除浮點數精度導致的機率漂移
+    let totalProb = 0;
+    for (let i = 0; i < this.stateSize; i++) {
+      const r = this.state[i * 2]!;
+      const im = this.state[i * 2 + 1]!;
+      totalProb += r * r + im * im;
+    }
+
+    const rand = Math.random() * (totalProb > 0 ? totalProb : 1);
     let cumulative = 0;
-    // 🌟 優化 3：預設為最後一個 index 處理浮點數精度導致未中鏢的情況，移除迴圈內的判斷
     let idx = this.stateSize - 1; 
 
     for (let i = 0; i < this.stateSize; i++) {
@@ -178,8 +193,13 @@ export class TensorEngine {
       const im = this.state[i * 2 + 1]!;
       const probability = re * re + im * im;
       const modulus = Math.sqrt(probability);
-      let phase = Math.atan2(im, re);
-      if (modulus < QUANTUM_CONFIG.EPSILON) phase = 0;
+      
+      let phase = 0;
+      if (modulus >= QUANTUM_CONFIG.EPSILON) {
+        phase = Math.atan2(im, re);
+        // 🌟 優化 3：統一將 Phase 正規化至 0 到 2π，對齊 UI 呈現
+        if (phase < 0) phase += 2 * Math.PI;
+      }
 
       results.push({
         index: i,
@@ -197,7 +217,6 @@ export class TensorEngine {
   public computeConcurrence(): number {
     if (this.numQubits !== 2) return 0;
     
-    // 🌟 優化 2：直接從狀態陣列取值計算，避免呼叫 getAmplitudes() 產生無謂的 GC 垃圾
     const a00Re = this.state[0]!; const a00Im = this.state[1]!;
     const a01Re = this.state[2]!; const a01Im = this.state[3]!;
     const a10Re = this.state[4]!; const a10Im = this.state[5]!;
