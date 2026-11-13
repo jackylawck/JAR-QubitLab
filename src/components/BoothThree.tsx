@@ -1,5 +1,5 @@
 // src/components/BoothThree.tsx
-import { Suspense, useMemo } from 'react';
+import { Suspense, useMemo, useEffect } from 'react';
 import { Text, RoundedBox } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
 import * as THREE from 'three';
@@ -29,18 +29,20 @@ const Pillar = ({ position, amplitude, geometry, material }: PillarProps) => {
 
   return (
     <group position={[position[0], 0, position[2]]}>
-      {/* 🌟 優化 1：得益於 Pivot Trick，現在只需要修改 scale-y 即可完美長高 */}
-      <a.mesh geometry={geometry} material={material} scale-y={scaleY} />
+      {/* 🌟 優化 1：標明 dispose={null} 防止 R3F 誤判回收共用資源 */}
+      <a.mesh geometry={geometry} material={material} scale-y={scaleY} dispose={null} />
 
-      {/* 標籤移至柱頂 y=3.5，取消旋轉使其直視相機 */}
-      <group position={[0, 3.5, 0]}>
+      {/* 標籤移至柱頂上方，確保旋轉時不被遮擋 */}
+      <group position={[0, 3.6, 0]}>
         <Suspense fallback={null}>
           <Text 
-            fontSize={0.4} 
+            fontSize={0.45} 
             color="#ffffff" 
             font={FONT_MATH_PATH}
-            outlineWidth={0.02}
+            outlineWidth={0.025}
             outlineColor="#000000"
+            anchorX="center"
+            anchorY="middle"
           >
             {amplitude.label}
           </Text>
@@ -54,8 +56,8 @@ export const BoothThree = () => {
   const amplitudes = useTensorStore((s) => s.amplitudes);
   const isEntangled = useTensorStore((s) => s.isEntangled);
 
-  // 🌟 優化 2：Zero-GC 預分配記憶體，所有柱子與軌道共用同一份資源
-  const { baseMat, normalMat, entangledMat, trackMat, pillarGeo, trackGeo } = useMemo(() => {
+  // 🌟 Zero-GC 預分配記憶體：所有柱子與軌道共用同一份資源
+  const resources = useMemo(() => {
     // 將高為 3 的圓柱體原點下移 1.5（移至底部）
     const cyl = new THREE.CylinderGeometry(0.5, 0.5, 3, 32);
     cyl.translate(0, 1.5, 0);
@@ -76,23 +78,42 @@ export const BoothThree = () => {
         transparent: true, opacity: 0.85, roughness: 0.3, metalness: 0.1 
       }),
       
+      // 🌟 優化 2：加上 polygonOffset 消滅與底座/柱體的 Z-Fighting 閃爍
       trackMat: new THREE.MeshBasicMaterial({ 
         color: '#a855f7', transparent: true, opacity: 0.3, 
-        blending: THREE.AdditiveBlending, depthWrite: false 
+        blending: THREE.AdditiveBlending, depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
       }),
     };
   }, []);
+
+  // 🌟 優化 3：生命週期結束時主動釋放 GPU 記憶體，防止切換展台造成 VRAM 洩漏
+  useEffect(() => {
+    return () => {
+      Object.values(resources).forEach(resource => {
+        if (typeof resource.dispose === 'function') {
+          resource.dispose();
+        }
+      });
+    };
+  }, [resources]);
 
   return (
     <group position={[0, -1, 0]}>
       {/* 展台底座永遠顯示 */}
       <RoundedBox args={[8, 0.8, 6]} radius={0.1} smoothness={4} position={[0, -0.4, 0]}>
-        <primitive object={baseMat} attach="material" />
+        <primitive object={resources.baseMat} attach="material" />
       </RoundedBox>
 
       {/* 貝爾態對角線發光軌道 */}
       {isEntangled && (
-        <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0.6435]} geometry={trackGeo} material={trackMat} />
+        <mesh 
+          position={[0, 0.02, 0]} 
+          rotation={[-Math.PI / 2, 0, 0.6435]} 
+          geometry={resources.trackGeo} 
+          material={resources.trackMat} 
+          dispose={null}
+        />
       )}
 
       {/* 防禦性渲染 (Defensive Rendering) */}
@@ -105,9 +126,8 @@ export const BoothThree = () => {
             key={i} 
             position={pos} 
             amplitude={amp}
-            geometry={pillarGeo}
-            // 🌟 優化 3：直接進行記憶體參照的替換，不產生新的 GC
-            material={isEntangled ? entangledMat : normalMat}
+            geometry={resources.pillarGeo}
+            material={isEntangled ? resources.entangledMat : resources.normalMat}
           />
         );
       })}
