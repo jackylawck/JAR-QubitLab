@@ -165,8 +165,8 @@ export const initCyberpunkEasterEgg = (): void => {
     '%c本實驗室的 3D 渲染光譜隱藏了四組經典機甲美學對照（主介面維持純學術詞彙）：\n' +
       '• 展台 1 [疊加與測量坍縮] ➔ 初號機（EVA-01）覺醒\n' +
       '• 展台 2 [馬赫-曾德爾相位干涉] ➔ 二號機（EVA-02）明日香\n' +
-      '• 展台 3 [雙量子位元糾纏 / 貝爾態] ➔ 初號機（EVA-01） vs 第13號機（EVA-13） 最終對決\n' +
-      '• 展台 4 [量子隱形傳態與不可克隆] ➔ 零號機（EVA-00）轉移至零號機改（EVA-00\' Proto Type）與粉藍靈魂封包',
+      '• 展台 3 [雙量子位元糾纏 / 貝爾態] ➔ 初號機（EVA-01）vs 第13號機（EVA-13）最終對決\n' +
+      '• 展台 4 [量子隱形傳態與不可克隆] ➔ 零號機（EVA-00 Proto Type 山吹橙）轉移至零號機改（EVA-00\' Proto Type 深鈷藍）與粉藍靈魂封包',
     zhCardStyle
   );
   print(
@@ -174,7 +174,7 @@ export const initCyberpunkEasterEgg = (): void => {
       '• Booth 1 [Superposition & Wavefunction Collapse] ➔ EVA Unit-01 Awakening\n' +
       '• Booth 2 [Mach-Zehnder Phase Interference] ➔ EVA Unit-02 Asuka\n' +
       '• Booth 3 [Two-Qubit Entanglement / Bell State] ➔ EVA Unit-01 vs. Unit-13 Final Showdown\n' +
-      '• Booth 4 [Quantum Teleportation & No-Cloning] ➔ EVA-00 (Amber Orange) to EVA-00\' Proto Type) Soul Transfer',
+      '• Booth 4 [Quantum Teleportation & No-Cloning] ➔ EVA-00 Proto Type (Amber Orange) to EVA-00\' Proto Type (Cobalt Blue) Soul Transfer',
     enCardStyle
   );
 
@@ -203,13 +203,13 @@ export const initCyberpunkEasterEgg = (): void => {
     );
     print(
       '%c  [展台 1 / Booth 1] 疊加與測量坍縮 (Superposition & Collapse)\n' +
-        '    ↳ 初號機（EVA-01）覺醒 / Unit-01 Awakening ➔ 裝甲紫 #a855f7 ＋ 螢光青綠 #10b981\n' +
+        '    ↳ 初號機（EVA-01）覺醒 / Unit-01 Awakening ➔ 裝甲紫 Violet #a855f7 ＋ 螢光青綠 Neon Green #10b981\n' +
         '  [展台 2 / Booth 2] 馬赫-曾德爾相位干涉 (Mach-Zehnder Interference)\n' +
-        '    ↳ 二號機（EVA-02）明日香 / Unit-02 Asuka ➔ 明日香紅 #dc2626 ＋ 亮黃 #facc15\n' +
+        '    ↳ 二號機（EVA-02）明日香 / Unit-02 Asuka ➔ 明日香紅 Crimson #dc2626 ＋ 亮黃 Yellow #facc15\n' +
         '  [展台 3 / Booth 3] 雙量子位元糾纏 (Bell State Entanglement)\n' +
-        '    ↳ 初號機 vs 第13號機 / Unit-01 vs Unit-13 ➔ 紫綠 #9333ea/#22c55e vs 紫藍緋紅 #3730a3/#e11d48（卡西烏斯光槍 #ff1e42）\n' +
+        '    ↳ 初號機 vs 第13號機 / Unit-01 vs Unit-13 ➔ 紫綠 #9333ea/#22c55e vs 紫藍緋紅 #3730a3/#e11d48（卡西烏斯光槍 Spear of Cassius #ff1e42）\n' +
         '  [展台 4 / Booth 4] 量子隱形傳態 (Quantum Teleportation)\n' +
-        '    ↳ 零號機 EVA-00 ➔ 零號機改 EVA-00\' ➔ 山吹橙 #f97316 ＋ 粉藍靈魂光球 #bae6fd/#38bdf8 ＋ 深鈷藍 #1d4ed8（純白護甲邊＋單眼紅點 #ef4444）',
+        '    ↳ 零號機 EVA-00 Proto Type ➔ 零號機改 EVA-00\' Proto Type ➔ 山吹橙 Amber Orange #f97316 ＋ 粉藍靈魂光球 Pale Cyan Soul #bae6fd/#38bdf8 ＋ 深鈷藍 Cobalt Blue #1d4ed8（純白護甲邊 White Trim ＋ 單眼紅點 Red Mono-Eye #ef4444）',
       'background: #090d16; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 11px; line-height: 1.75;'
     );
   };
@@ -221,9 +221,9 @@ export const initCyberpunkEasterEgg = (): void => {
       'color: #f97316; font-weight: 900; font-size: 13px; font-family: monospace; text-shadow: 0 0 8px rgba(249,115,22,0.5);'
     );
     print(
-      '%c  • MELCHIOR-1 (科學家 / Scientist)  ➔ [ 承認 / APPROVED ] 酉矩陣演化誤差 < 1e-12\n' +
-        '  • BALTHASAR-2 (母親 / Mother)     ➔ [ 承認 / APPROVED ] 零數據留存隱私邊界完整\n' +
-        '  • CASPER-3 (女性 / Woman)         ➔ [ 承認 / APPROVED ] 波函數相干性穩定',
+      '%c  • MELCHIOR-1 (科學家 / Scientist)  ➔ [ 承認 / APPROVED ] 酉矩陣演化誤差 < 1e-12 // Unitary error < 1e-12\n' +
+        '  • BALTHASAR-2 (母親 / Mother)     ➔ [ 承認 / APPROVED ] 零數據留存隱私邊界完整 // Zero-Data-Retention intact\n' +
+        '  • CASPER-3 (女性 / Woman)         ➔ [ 承認 / APPROVED ] 波函數相干性穩定 // Wavefunction coherence stable',
       'background: #090d16; color: #fdba74; border: 1px solid #9a3412; border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 11px; line-height: 1.75;'
     );
     FX_GC.schedule(() => {
