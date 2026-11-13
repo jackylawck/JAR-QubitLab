@@ -1,6 +1,6 @@
 // src/quantum/engine.test.ts
 import { describe, it, expect } from 'vitest';
-import { applyGatePure, initZeroState, processStateVector, applyPhaseGate, calculateConcurrence } from './engine';
+import { applyGatePure, initZeroState, processStateVector, applyPhaseGate } from './engine';
 import { GateName, RawComplex } from './types';
 
 describe('Quantum Engine Integrity & Big-Endian Verification', () => {
@@ -9,10 +9,12 @@ describe('Quantum Engine Integrity & Big-Endian Verification', () => {
     const { amplitudes } = applyGatePure(init.amplitudes, 0, 'X', [0], 2);
 
     expect(amplitudes.length).toBe(4);
-    expect(amplitudes[0]!.modulus).toBeCloseTo(0.0);
-    expect(amplitudes[1]!.modulus).toBeCloseTo(0.0);
-    expect(amplitudes[2]!.modulus).toBeCloseTo(1.0);
-    expect(amplitudes[3]!.modulus).toBeCloseTo(0.0);
+    // 🌟 優化 1：提早安全提取並斷言，保持程式碼簡潔
+    const [a0, a1, a2, a3] = amplitudes;
+    expect(a0!.modulus).toBeCloseTo(0.0);
+    expect(a1!.modulus).toBeCloseTo(0.0);
+    expect(a2!.modulus).toBeCloseTo(1.0);
+    expect(a3!.modulus).toBeCloseTo(0.0);
   });
 
   it('2. 驗證 CNOT 作用: ctrl=q0, tgt=q1 作用於 |10⟩ 應輸出 |11⟩ (索引 3)', () => {
@@ -20,10 +22,11 @@ describe('Quantum Engine Integrity & Big-Endian Verification', () => {
     const step1 = applyGatePure(init.amplitudes, 0, 'X', [0], 2);
     const step2 = applyGatePure(step1.amplitudes, step1.refIdx, 'CNOT', [0, 1], 2);
 
-    expect(step2.amplitudes[0]!.modulus).toBeCloseTo(0.0);
-    expect(step2.amplitudes[1]!.modulus).toBeCloseTo(0.0);
-    expect(step2.amplitudes[2]!.modulus).toBeCloseTo(0.0);
-    expect(step2.amplitudes[3]!.modulus).toBeCloseTo(1.0);
+    const [a0, a1, a2, a3] = step2.amplitudes;
+    expect(a0!.modulus).toBeCloseTo(0.0);
+    expect(a1!.modulus).toBeCloseTo(0.0);
+    expect(a2!.modulus).toBeCloseTo(0.0);
+    expect(a3!.modulus).toBeCloseTo(1.0);
   });
 
   it('3. 驗證 CNOT 反向防呆: ctrl=q1, tgt=q0 作用於 |10⟩ 應保持 |10⟩', () => {
@@ -31,16 +34,16 @@ describe('Quantum Engine Integrity & Big-Endian Verification', () => {
     const step1 = applyGatePure(init.amplitudes, 0, 'X', [0], 2);
     const step2 = applyGatePure(step1.amplitudes, step1.refIdx, 'CNOT', [1, 0], 2);
 
-    expect(step2.amplitudes[0]!.modulus).toBeCloseTo(0.0);
-    expect(step2.amplitudes[1]!.modulus).toBeCloseTo(0.0);
-    expect(step2.amplitudes[2]!.modulus).toBeCloseTo(1.0);
-    expect(step2.amplitudes[3]!.modulus).toBeCloseTo(0.0);
+    const [a0, a1, a2, a3] = step2.amplitudes;
+    expect(a0!.modulus).toBeCloseTo(0.0);
+    expect(a1!.modulus).toBeCloseTo(0.0);
+    expect(a2!.modulus).toBeCloseTo(1.0);
+    expect(a3!.modulus).toBeCloseTo(0.0);
   });
 });
 
 describe('Global Phase Lock Hysteresis (processStateVector)', () => {
   it('4. 鎖相遲滯：候選未達 1.5 倍前，refIdx 不得漂移（保持舊索引 0）', () => {
-    // 🌟 優化 1：匹配最新的引擎輸入格式 (RawComplex)
     const dummy: RawComplex[] = [
       { re: Math.sqrt(0.49), im: 0 },
       { re: 0, im: 0 },
@@ -59,7 +62,7 @@ describe('Global Phase Lock Hysteresis (processStateVector)', () => {
       { re: Math.sqrt(0.7), im: 0 },
     ];
     const { refIdx } = processStateVector(dummy, 0);
-    expect(refIdx).toBe(3); // 0.7 > 0.3 * 1.5 (0.45)
+    expect(refIdx).toBe(3); 
   });
 });
 
@@ -77,10 +80,12 @@ describe('Phase & Normalization Accuracy', () => {
   it('7. 驗證 H 門標準化: H(q0) 作用於 |00⟩ 應產生兩個模長 1/√2 的振幅', () => {
     const init = initZeroState(2);
     const { amplitudes } = applyGatePure(init.amplitudes, 0, 'H', [0], 2);
-    expect(amplitudes[0]!.modulus).toBeCloseTo(1 / Math.SQRT2, 5);
-    expect(amplitudes[2]!.modulus).toBeCloseTo(1 / Math.SQRT2, 5);
-    expect(amplitudes[1]!.modulus).toBeCloseTo(0, 5);
-    expect(amplitudes[3]!.modulus).toBeCloseTo(0, 5);
+    const [a0, a1, a2, a3] = amplitudes;
+    
+    expect(a0!.modulus).toBeCloseTo(1 / Math.SQRT2, 5);
+    expect(a2!.modulus).toBeCloseTo(1 / Math.SQRT2, 5);
+    expect(a1!.modulus).toBeCloseTo(0, 5);
+    expect(a3!.modulus).toBeCloseTo(0, 5);
   });
 
   it('8. 歸一化守恆: 任意 Gate 序列後總機率應恆為 1.0', () => {
@@ -103,7 +108,6 @@ describe('Phase & Normalization Accuracy', () => {
 });
 
 describe('Sprint 2: Mach-Zehnder Full Sequence (H -> P(phi) -> H)', () => {
-  // 🌟 優化 3：利用 test.each 拆解測試，錯誤定位更精準
   const testAngles = [
     { phi: 0, name: '0' },
     { phi: Math.PI / 4, name: 'PI/4' },
@@ -114,7 +118,8 @@ describe('Sprint 2: Mach-Zehnder Full Sequence (H -> P(phi) -> H)', () => {
     { phi: (3 * Math.PI) / 2, name: '3PI/2' },
   ];
 
-  it.each(testAngles)('9. phi = $name 時滿足概率轉移與能量守恆', ({ phi }) => {
+  // 🌟 優化 3：使用 $phi 讓測試報告更具體
+  it.each(testAngles)('9. phi = $name ($phi rad) 時滿足概率轉移與能量守恆', ({ phi }) => {
     const zero = initZeroState(2);
     const afterH = applyGatePure(zero.amplitudes, zero.refIdx, 'H', [0], 2);
     const afterP = applyPhaseGate(afterH.amplitudes, phi, 0, 2, afterH.refIdx);
