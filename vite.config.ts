@@ -49,6 +49,7 @@ export default defineConfig(({ command }) => {
 
       rollupOptions: {
         output: {
+          // 明確指定產物命名格式，利於瀏覽器長效強快取 (Immutable Cache)
           chunkFileNames: 'assets/js/[name]-[hash].js',
           entryFileNames: 'assets/js/[name]-[hash].js',
           assetFileNames: 'assets/[ext]/[name]-[hash].[ext]',
@@ -84,10 +85,10 @@ export default defineConfig(({ command }) => {
       legalComments: 'none',
     },
 
-    // 與 Vitest 共用同一份配置，確保測試與建置管線一致
+    // 採用原生 node 環境執行純量子演算法與狀態單元測試，零外部 DOM 依賴、CI 秒過
     test: {
       globals: true,
-      environment: 'jsdom',
+      environment: 'node',
       include: ['src/**/*.{test,spec}.{ts,tsx}'],
     },
   };
