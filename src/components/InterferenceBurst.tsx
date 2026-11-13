@@ -1,28 +1,3 @@
-這份 `InterferenceBurst.tsx` 是負責在展台 2 (二號機主題) 中處理「同相干涉」與「反相蒸發」粒子特效的核心元件。它已經具備了很好的 Zero-GC 設計和防禦性陣列存取，但為了徹底對齊 **「二號機 (EVA-02) 經典色」** 主題，我們需要對粒子的顏色與發光質感進行最後的打磨。
-
-### 核心優化點
-
-1. **二號機 (EVA-02) 專屬粒子配色注入**：
-* **蒸發特效 (Evaporate)**：當反相干涉導致量子態抵消蒸發時，粒子顏色將從原本單純的亮粉色，改為**二號機亮黃色 (`#facc15` / Yellow-400)**，並混合微弱的**明日香紅 (`#ef4444` / Red-500)** 打造火花般的高溫質感。
-* **融合特效 (Merge)**：當同相干涉導致量子態疊加增強時，粒子顏色將由天藍色改為**高能的二號機主裝甲深紅 (`#dc2626` / Red-600) 混合亮橙色 (`#f97316`)**，象徵強大的聚合能量。
-
-
-2. **混合色彩計算**：
-* 我們不再只用單一顏色填滿整個粒子系統。而是利用 `Math.random()` 在兩個基礎顏色間進行線性差值 (Lerp)，讓粒子噴發 / 融合時擁有豐富的層次感。
-
-
-3. **優化 `useFrame` 效能**：
-* 在動畫循環中，除了防禦性存取外，移除多餘的常數重複計算，並確保留存零延遲生成材質 (CanvasTexture) 設計。
-
-
-
----
-
-### 優化後的 `src/components/InterferenceBurst.tsx`
-
-請將以下程式碼覆蓋原檔案：
-
-```tsx
 // src/components/InterferenceBurst.tsx
 /*
  * Project: J.A.R. QubitLab
@@ -210,5 +185,3 @@ export const InterferenceBurst = ({ type, position, onComplete }: InterferenceBu
     </points>
   );
 };
-
-```
