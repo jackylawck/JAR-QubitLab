@@ -4,6 +4,7 @@
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
  */
 import { create } from 'zustand';
+import { useCallback, useEffect, useRef } from 'react';
 
 interface AnimationLockState {
   lockCount: number;
@@ -22,12 +23,13 @@ export const useAnimationLockStore = create<AnimationLockState>((set) => ({
     }));
     
     let released = false;
-    let timeoutId: number | undefined;
+    // 🌟 優化 1：跨環境型別安全 (NodeJS.Timeout vs Browser number)
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const release = () => {
       if (released) return;
       released = true;
-      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
 
       set((state) => {
         const nextCount = Math.max(0, state.lockCount - 1);
@@ -35,10 +37,9 @@ export const useAnimationLockStore = create<AnimationLockState>((set) => ({
       });
     };
 
-    // 🌟 效能治理：看門狗防呆機制 (Watchdog Timer)
-    // 預設 5000ms 後強制解鎖。防止元件卸載遺漏或 JS 錯誤導致引擎鎖死在 'always'，燒毀行動裝置電池。
+    // 效能治理：看門狗防呆機制 (Watchdog Timer)
     if (fallbackTimeoutMs > 0) {
-      timeoutId = window.setTimeout(() => {
+      timeoutId = setTimeout(() => {
         if (!released) {
           console.warn(`[JAR-QubitLab] ⚠️ Animation lock watchdog triggered after ${fallbackTimeoutMs}ms. Auto-releasing to prevent battery drain.`);
           release();
@@ -50,7 +51,7 @@ export const useAnimationLockStore = create<AnimationLockState>((set) => ({
   },
 }));
 
-// Vite HMR 邊界防護：模組替換時重置計數，避免 frameloop 鎖死在 'always'
+// Vite HMR 邊界防護：模組替換時重置計數，避免 frameloop 鎖死
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     useAnimationLockStore.setState({ lockCount: 0, isAnimating: false });
@@ -59,9 +60,48 @@ if (import.meta.hot) {
 
 export const useAnimationLock = () => {
   const isAnimating = useAnimationLockStore((state) => state.isAnimating);
-  return { isAnimating };
+  const acquire = useAnimationLockStore((state) => state.acquire);
+
+  // 🌟 優化 2：將元件層級的防連點 (Debounce) 與自動釋放邏輯封裝進 Hook
+  const lockReleaseRef = useRef<(() => void) | null>(null);
+  const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const requestActionLock = useCallback((duration: number = 500) => {
+    // 阻斷並清理上一次未完成的鎖定
+    if (lockTimerRef.current !== null) {
+      clearTimeout(lockTimerRef.current);
+    }
+    if (lockReleaseRef.current) {
+      lockReleaseRef.current();
+      lockReleaseRef.current = null;
+    }
+    
+    // 呼叫底層 acquire，並加上 1 秒作為底層 Watchdog 的容錯緩衝
+    lockReleaseRef.current = acquire(duration + 1000); 
+    
+    lockTimerRef.current = setTimeout(() => {
+      if (lockReleaseRef.current) {
+        lockReleaseRef.current();
+        lockReleaseRef.current = null;
+      }
+      lockTimerRef.current = null;
+    }, duration);
+  }, [acquire]);
+
+  // 🌟 優化 3：元件卸載 (Unmount) 時的安全清理，杜絕 Memory Leak 與狀態死鎖
+  useEffect(() => {
+    return () => {
+      if (lockTimerRef.current !== null) clearTimeout(lockTimerRef.current);
+      if (lockReleaseRef.current) {
+        lockReleaseRef.current();
+        lockReleaseRef.current = null;
+      }
+    };
+  }, []);
+
+  return { isAnimating, requestActionLock, acquire };
 };
 
-// 允許外部直接調用，並可自訂該次鎖定的最長容忍時間 (例如：acquireAnimationLock(2000))
+// 允許外部直接調用，並可自訂該次鎖定的最長容忍時間
 export const acquireAnimationLock = (fallbackTimeoutMs?: number) => 
   useAnimationLockStore.getState().acquire(fallbackTimeoutMs);
