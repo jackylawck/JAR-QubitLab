@@ -166,7 +166,7 @@ export const initCyberpunkEasterEgg = (): void => {
       '• 展台 1 [疊加與測量坍縮] ➔ 初號機（EVA-01）覺醒\n' +
       '• 展台 2 [馬赫-曾德爾相位干涉] ➔ 二號機（EVA-02）明日香\n' +
       '• 展台 3 [雙量子位元糾纏 / 貝爾態] ➔ 初號機 vs 第13號機 最終對決\n' +
-      '• 展台 4 [量子隱形傳態與不可克隆] ➔ 零號機（EVA-00）靈魂轉移與 MAGI 傳輸',
+      '• 展台 4 [量子隱形傳態與不可克隆] ➔ 零號機（EVA-00 山吹橙）轉移至零號機改（EVA-00\' 深鈷藍）與粉藍靈魂封包',
     zhCardStyle
   );
   print(
@@ -174,7 +174,7 @@ export const initCyberpunkEasterEgg = (): void => {
       '• Booth 1 [Superposition & Wavefunction Collapse] ➔ EVA Unit-01 Awakening\n' +
       '• Booth 2 [Mach-Zehnder Phase Interference] ➔ EVA Unit-02 Asuka\n' +
       '• Booth 3 [Two-Qubit Entanglement / Bell State] ➔ EVA Unit-01 vs. Unit-13 Final Showdown\n' +
-      '• Booth 4 [Quantum Teleportation & No-Cloning] ➔ EVA Unit-00 Soul Transfer & MAGI Transmission',
+      '• Booth 4 [Quantum Teleportation & No-Cloning] ➔ EVA-00 (Amber Orange) to EVA-00\' (Cobalt Blue) Soul Transfer',
     enCardStyle
   );
 
@@ -209,7 +209,7 @@ export const initCyberpunkEasterEgg = (): void => {
         '  [展台 3 / Booth 3] 雙量子位元糾纏 (Bell State Entanglement)\n' +
         '    ↳ 初號機 vs 第13號機 / Unit-01 vs Unit-13 ➔ 紫綠 #9333ea/#22c55e vs 紫藍緋紅 #3730a3/#e11d48（卡西烏斯光槍 #ff1e42）\n' +
         '  [展台 4 / Booth 4] 量子隱形傳態 (Quantum Teleportation)\n' +
-        '    ↳ 零號機（EVA-00）與 MAGI 傳輸 / Unit-00 & MAGI ➔ 山吹橙 #f97316 ＋ 初期藍 #0ea5e9 ＋ 琥珀金 #fbbf24',
+        '    ↳ 零號機 EVA-00 ➔ 零號機改 EVA-00\' ➔ 山吹橙 #f97316 ＋ 粉藍靈魂光球 #bae6fd/#38bdf8 ＋ 深鈷藍 #1d4ed8（純白護甲邊＋單眼紅點 #ef4444）',
       'background: #090d16; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; padding: 8px 10px; font-family: monospace; font-size: 11px; line-height: 1.75;'
     );
   };
