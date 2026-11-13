@@ -2,7 +2,7 @@
 /*
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
- * Theme: EVA-00 Soul Transfer & Terminal Dogma (No-Cloning Theorem)
+ * Theme: EVA-00 (Amber Orange) -> EVA-00' (Cobalt Blue) Soul Transfer
  */
 import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
@@ -78,7 +78,7 @@ export function BoothFour() {
     };
   }, [phase, aliceTheta, classicalBits, lastUserBits]);
 
-  // 🌟 Zero-GC 預分配：Terminal Dogma & EVA-00 專屬幾何與材質
+  // 🌟 Zero-GC 預分配：EVA-00 雙機型態與綾波麗靈魂光球專屬幾何與材質
   const resources = useMemo(() => {
     const cyl = new THREE.CylinderGeometry(0.32, 0.32, 1, 32);
     cyl.translate(0, 0.5, 0);
@@ -89,19 +89,34 @@ export function BoothFour() {
       pillarGeo: cyl,
       ringGeo: new THREE.CircleGeometry(0.42, 32),
       spineGeo,
-      packetGeo: new THREE.SphereGeometry(0.18, 24, 24),
+      packetGeo: new THREE.SphereGeometry(0.2, 24, 24),
       hoopGeo: new THREE.TorusGeometry(0.36, 0.028, 16, 32),
-      sensorGeo: new THREE.SphereGeometry(0.055, 16, 16),
+      eyeGeo: new THREE.SphereGeometry(0.052, 16, 16),
 
       baseMat: new THREE.MeshStandardMaterial({ color: '#090a0f', roughness: 0.8 }),
 
-      // Alice 端：零號機改 EVA-00' (山吹橙 + 純白底座 + 深灰黑肩甲三色配)
-      aliceRingMat: new THREE.MeshBasicMaterial({
-        color: '#f8fafc',
+      // 純白裝甲邊框材質（代替銀色，還原兩代零號機的純白護甲線條）
+      whiteArmorMat: new THREE.MeshStandardMaterial({
+        color: '#ffffff',
+        emissive: '#e2e8f0',
+        emissiveIntensity: 0.25,
+        roughness: 0.2,
+        metalness: 0.1,
+      }),
+      whiteBaseRingMat: new THREE.MeshBasicMaterial({
+        color: '#ffffff',
         transparent: true,
-        opacity: 0.55,
+        opacity: 0.7,
         depthWrite: false,
       }),
+
+      // 兩代零號機共通的標誌性「單眼紅點 (Red Mono-Eye)」
+      redEyeMat: new THREE.MeshBasicMaterial({
+        color: '#ef4444',
+        toneMapped: false,
+      }),
+
+      // Alice 端：初期零號機 EVA-00 (山吹橙裝甲 + 純白護甲邊 + 單眼紅點)
       alicePillarMat: new THREE.MeshStandardMaterial({
         color: '#f97316',
         emissive: '#ea580c',
@@ -112,13 +127,8 @@ export function BoothFour() {
         roughness: 0.2,
         metalness: 0.1,
       }),
-      aliceArmorMat: new THREE.MeshStandardMaterial({
-        color: '#1e293b',
-        roughness: 0.45,
-        metalness: 0.65,
-      }),
 
-      // 中間通道：Terminal Dogma 骨骼白脊椎導管 + 螢光綠校驗環 + 核心緋紅封包
+      // 中間通道：Terminal Dogma 骨骼白脊椎導管 + 螢光綠校驗環 + 綾波麗靈魂粉藍光球
       spineMat: new THREE.MeshStandardMaterial({
         color: '#f8fafc',
         roughness: 0.5,
@@ -134,21 +144,17 @@ export function BoothFour() {
         polygonOffsetFactor: -1,
         polygonOffsetUnits: -1,
       }),
-      packetMat: new THREE.MeshStandardMaterial({
-        color: '#f43f5e',
-        emissive: '#e11d48',
+      soulPacketMat: new THREE.MeshStandardMaterial({
+        color: '#bae6fd', // 聖潔發光粉藍（綾波麗靈魂光輝）
+        emissive: '#38bdf8',
         emissiveIntensity: 1.15,
         toneMapped: false,
-        roughness: 0.15,
+        transparent: true,
+        opacity: 0.95,
+        roughness: 0.1,
       }),
 
-      // Bob 端：零號機初期型 (高飽和深鈷藍 #1d4ed8 + 純白裝甲) + 高可見度透明培養槽
-      bobRingMat: new THREE.MeshBasicMaterial({
-        color: '#f8fafc',
-        transparent: true,
-        opacity: 0.65,
-        depthWrite: false,
-      }),
+      // Bob 端：零號機改 EVA-00' (高飽和深鈷藍 + 純白護甲邊 + 單眼紅點) + 透明培養槽
       bobPillarMat: new THREE.MeshStandardMaterial({
         color: '#1d4ed8',
         emissive: '#1e40af',
@@ -162,21 +168,12 @@ export function BoothFour() {
       bobTankMat: new THREE.MeshPhysicalMaterial({
         color: '#e0f2fe',
         transparent: true,
-        opacity: 0.26,
+        opacity: 0.24,
         transmission: 0.75,
         roughness: 0.1,
         metalness: 0.1,
         depthWrite: false,
         side: THREE.DoubleSide,
-      }),
-      silverHoopMat: new THREE.MeshStandardMaterial({
-        color: '#f1f5f9',
-        roughness: 0.25,
-        metalness: 0.85,
-      }),
-      sensorMat: new THREE.MeshBasicMaterial({
-        color: '#10b981',
-        toneMapped: false,
       }),
     };
   }, []);
@@ -189,7 +186,7 @@ export function BoothFour() {
     };
   }, [resources]);
 
-  // 核心緋紅封包沿脊椎導管傳輸動畫
+  // 粉藍靈魂封包沿脊椎導管傳輸動畫
   const isSent = phase === 'correct' || phase === 'success' || phase === 'failed';
   const { packetX, packetScale } = useSpring({
     packetX: isSent ? 1.4 : -1.4,
@@ -220,7 +217,7 @@ export function BoothFour() {
       <directionalLight position={[-4, 8, 4]} intensity={1.1} color="#fb923c" />
       <directionalLight position={[4, 8, 4]} intensity={1.15} color="#3b82f6" />
 
-      {/* 1. ALICE 面板 (發送端 / EVA-00' 山吹橙＋純白＋深灰三色意象) */}
+      {/* 1. ALICE 面板 (發送端 / 零號機 EVA-00 山吹橙＋純白邊＋單眼紅點) */}
       <group position={[-3.0, 0, 0]}>
         <RoundedBox args={[3.2, 0.8, 3]} radius={0.1} smoothness={4} position={[0, -0.4, 0]}>
           <primitive object={resources.baseMat} attach="material" />
@@ -230,19 +227,30 @@ export function BoothFour() {
           const hSpring = aliceSpringArray[i]!;
           return (
             <group key={`alice-${i}`} position={pos}>
+              {/* 純白底座環 */}
               <mesh
                 position={[0, 0.01, 0]}
                 rotation={[-Math.PI / 2, 0, 0]}
                 geometry={resources.ringGeo}
-                material={resources.aliceRingMat}
+                material={resources.whiteBaseRingMat}
                 dispose={null}
               />
+              {/* 山吹橙主柱體 */}
               <a.mesh scale-y={hSpring} geometry={resources.pillarGeo} material={resources.alicePillarMat} dispose={null} />
+              {/* 純白頂部裝甲邊框 */}
               <a.mesh
                 position-y={hSpring}
                 rotation={[Math.PI / 2, 0, 0]}
                 geometry={resources.hoopGeo}
-                material={resources.aliceArmorMat}
+                material={resources.whiteArmorMat}
+                dispose={null}
+              />
+              {/* 零號機標誌性正面「單眼紅點」 */}
+              <a.mesh
+                position-y={hSpring.to((v) => Math.max(v - 0.14, 0.04))}
+                position-z={0.33}
+                geometry={resources.eyeGeo}
+                material={resources.redEyeMat}
                 dispose={null}
               />
             </group>
@@ -250,7 +258,7 @@ export function BoothFour() {
         })}
       </group>
 
-      {/* 2. 經典通訊通道 (Terminal Dogma 骨骼白脊椎導管 + 核心緋紅封包) */}
+      {/* 2. 經典通訊通道 (Terminal Dogma 骨骼白脊椎導管 + 綾波麗粉藍靈魂光球) */}
       <group position={[0, 0, 0]}>
         <mesh
           position={[0, 0.05, 0]}
@@ -275,15 +283,15 @@ export function BoothFour() {
         />
         <a.mesh
           position-x={packetX}
-          position-y={0.25}
+          position-y={0.26}
           scale={packetScale}
           geometry={resources.packetGeo}
-          material={resources.packetMat}
+          material={resources.soulPacketMat}
           dispose={null}
         />
       </group>
 
-      {/* 3. BOB 面板 (接收端 / EVA-00 初期深鈷藍 + 透明玻璃培養槽) */}
+      {/* 3. BOB 面板 (接收端 / 零號機改 EVA-00' 深鈷藍＋純白邊＋單眼紅點) */}
       <group position={[3.0, 0, 0]}>
         <RoundedBox args={[2.4, 0.8, 3]} radius={0.1} smoothness={4} position={[0, -0.4, 0]}>
           <primitive object={resources.baseMat} attach="material" />
@@ -294,15 +302,16 @@ export function BoothFour() {
           const gSpring = ghostSpringArray[i]!;
           return (
             <group key={`bob-${i}`} position={pos}>
+              {/* 純白底座環 */}
               <mesh
                 position={[0, 0.01, 0]}
                 rotation={[-Math.PI / 2, 0, 0]}
                 geometry={resources.ringGeo}
-                material={resources.bobRingMat}
+                material={resources.whiteBaseRingMat}
                 dispose={null}
               />
 
-              {/* 零號機初期型高飽和深鈷藍實體柱 */}
+              {/* 零號機改高飽和深鈷藍實體柱 */}
               <a.mesh scale-y={bSpring} geometry={resources.pillarGeo} material={resources.bobPillarMat} dispose={null} />
 
               {/* 透明玻璃培養槽本體 */}
@@ -315,28 +324,28 @@ export function BoothFour() {
                 dispose={null}
               />
 
-              {/* 底部與頂部銀白金屬箍環（保持正圓不變形） */}
+              {/* 底部與頂部「純白裝甲邊框」 */}
               <mesh
                 position={[0, 0.03, 0]}
                 rotation={[Math.PI / 2, 0, 0]}
                 geometry={resources.hoopGeo}
-                material={resources.silverHoopMat}
+                material={resources.whiteArmorMat}
                 dispose={null}
               />
               <a.mesh
                 position-y={gSpring}
                 rotation={[Math.PI / 2, 0, 0]}
                 geometry={resources.hoopGeo}
-                material={resources.silverHoopMat}
+                material={resources.whiteArmorMat}
                 dispose={null}
               />
 
-              {/* 頂部翠綠感應光點 */}
+              {/* 零號機改正面「單眼紅點」 */}
               <a.mesh
-                position-y={gSpring.to((v) => v + 0.04)}
-                position-z={0.34}
-                geometry={resources.sensorGeo}
-                material={resources.sensorMat}
+                position-y={gSpring.to((v) => Math.max(v - 0.14, 0.04))}
+                position-z={0.36}
+                geometry={resources.eyeGeo}
+                material={resources.redEyeMat}
                 dispose={null}
               />
             </group>
