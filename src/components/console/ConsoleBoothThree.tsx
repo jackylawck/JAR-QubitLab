@@ -17,13 +17,14 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
   const t = useLocaleStore((s) => s.t);
   const locale = useLocaleStore((s) => s.locale);
 
-  // 🌟 優化 1：使用 useMemo 封裝衍生狀態，確保渲染函數的純粹性，避免重複計算
+  // 🌟 優化 1：使用 useMemo 封裝衍生狀態，並修復 TS2532 嚴格索引報錯
   const stats = useMemo(() => {
     const counts = [0, 0, 0, 0];
     for (let i = 0; i < sampleHistory.length; i++) {
       const idx = sampleHistory[i];
       if (idx !== undefined && idx >= 0 && idx < 4) {
-        counts[idx]++;
+        // 安全累加：消滅 Object is possibly 'undefined'
+        counts[idx] = (counts[idx] ?? 0) + 1; 
       }
     }
     return counts;
@@ -31,8 +32,7 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
 
   const historyLen = sampleHistory.length;
 
-  // 🌟 優化 2：精簡 useEffect 音效邏輯
-  // (註：最理想的做法是將音效移至 tensorStore 的 sample20x 迴圈內，但若受限架構，此寫法已達最佳安全極限)
+  // 🌟 優化 2：精簡 useEffect 音效邏輯，並修復 TS7030 確保所有路徑皆有回傳
   useEffect(() => {
     if (historyLen > 0 && historyLen < 20) {
       sound.playTick(historyLen - 1);
@@ -41,6 +41,9 @@ export const ConsoleBoothThree = ({ isExplaining, setIsExplaining }: ConsoleBoot
       const timer = setTimeout(() => sound.playVictoryChord(), 150);
       return () => clearTimeout(timer);
     }
+    
+    // 明確宣告未觸發 Cleanup 的路徑回傳 undefined
+    return undefined; 
   }, [historyLen]);
 
   return (
