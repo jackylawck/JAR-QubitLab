@@ -2,11 +2,10 @@
 import { useRef, useEffect } from 'react';
 import { useTeleportStore } from '../../store/teleportStore';
 import { useLocaleStore } from '../../store/localeStore';
-import { useAnimationLock } from '../../hooks/useAnimationLock';
+import { acquireAnimationLock } from '../../hooks/useAnimationLock';
 import { sound } from '../../audio/soundEngine';
 
 const BIT_LABELS = ['00', '01', '10', '11'];
-// 物理邏輯：標準隱形傳態中，01 對應 X 閘，10 對應 Z 閘
 const CORRECTION_GATES = ['I (None)', 'X Gate', 'Z Gate', 'XZ Gates'];
 
 interface ConsoleBoothFourProps {
@@ -34,20 +33,38 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
   } = useTeleportStore();
 
   const locale = useLocaleStore((s) => s.locale);
-  const { requestActionLock } = useAnimationLock();
-  
-  // 🌟 音效計時器防護：避免元件卸載時觸發音效
-  const soundTimerRef = useRef<number | null>(null);
+
+  const lockReleaseRef = useRef<(() => void) | null>(null);
+  const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const soundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const requestActionLock = (duration: number = 500) => {
+    if (lockTimerRef.current !== null) clearTimeout(lockTimerRef.current);
+    if (lockReleaseRef.current) {
+      lockReleaseRef.current();
+      lockReleaseRef.current = null;
+    }
+    lockReleaseRef.current = acquireAnimationLock();
+    lockTimerRef.current = setTimeout(() => {
+      if (lockReleaseRef.current) {
+        lockReleaseRef.current();
+        lockReleaseRef.current = null;
+      }
+      lockTimerRef.current = null;
+    }, duration);
+  };
+
   useEffect(() => {
     return () => {
-      if (soundTimerRef.current !== null) {
-        clearTimeout(soundTimerRef.current);
-        soundTimerRef.current = null;
+      if (soundTimerRef.current !== null) clearTimeout(soundTimerRef.current);
+      if (lockTimerRef.current !== null) clearTimeout(lockTimerRef.current);
+      if (lockReleaseRef.current) {
+        lockReleaseRef.current();
+        lockReleaseRef.current = null;
       }
     };
   }, []);
 
-  // 滑桿轉換邏輯 (確保 Range 綁定為整數，避免 React 浮點數警告)
   const handleThetaChange = (val: string) => setAliceState((parseInt(val, 10) / 100) * Math.PI, alicePhi);
   const handlePhiChange = (val: string) => setAliceState(aliceTheta, (parseInt(val, 10) / 100) * 2 * Math.PI);
 
@@ -58,9 +75,8 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
     requestActionLock(500);
     applyCorrection(bits);
 
-    // 延遲播放結算音效，配合 3D 視覺光效的抵達時間
     if (soundTimerRef.current !== null) clearTimeout(soundTimerRef.current);
-    soundTimerRef.current = window.setTimeout(() => {
+    soundTimerRef.current = setTimeout(() => {
       const currentPhase = useTeleportStore.getState().phase;
       if (currentPhase === 'success') sound.playSuccess();
       else if (currentPhase === 'failed') sound.playFail();
@@ -68,7 +84,6 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
     }, 100);
   };
 
-  // 🌟 漸進式提示邏輯 (Progressive Hinting)
   const failureMessage =
     phase === 'failed' && lastUserBits !== null && classicalBits !== null
       ? isBlindMode && failedCount === 1
@@ -82,7 +97,6 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
 
   return (
     <div className="w-full max-w-4xl mx-auto h-full flex flex-col pointer-events-auto transition-all">
-      {/* 頂部狀態列 */}
       <div className="flex justify-between items-end mb-2 px-2">
         <div className="flex items-baseline gap-4 text-xs font-mono">
           <span className="text-slate-400">TELEPORT PROTOCOL:</span>
@@ -90,10 +104,9 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
         </div>
 
         <div className="flex gap-2">
-          {/* 盲測模式開關 */}
           <button
             onClick={() => {
-              sound.playTick(0); // 輕快的音效，取代厚重的 playLever
+              sound.playTick(0);
               toggleBlindMode();
             }}
             className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-colors ${
@@ -103,7 +116,6 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
             {isBlindMode ? (locale === 'zh' ? '盲測模式: ON' : 'BLIND: ON') : locale === 'zh' ? '盲測模式: OFF' : 'BLIND: OFF'}
           </button>
 
-          {/* BITS 徽章 (盲測模式下隱藏) */}
           {classicalBits !== null && !isBlindMode && (
             <span className="text-[10px] font-mono text-amber-400 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-900/50">
               BITS: {BIT_LABELS[classicalBits]}
@@ -123,7 +135,6 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
           </div>
         ) : (
           <>
-            {/* 階段 1: Prepare */}
             {phase === 'prepare' && (
               <div className="flex flex-col gap-3 h-full justify-center">
                 <div className="grid grid-cols-2 gap-4">
@@ -169,10 +180,8 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
               </div>
             )}
 
-            {/* 階段 2: Measure */}
             {phase === 'measure' && (
               <div className="flex flex-col items-center justify-center h-full">
-                {/* 文案縮短，防止小螢幕擠壓 */}
                 <p className="text-xs text-slate-400 mb-4 text-center px-4">
                   {locale === 'zh'
                     ? '糾纏對已建立。執行測量後，你將能對比 Bob 當前態與目標態的差異。'
@@ -191,7 +200,6 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
               </div>
             )}
 
-            {/* 階段 3: Correct */}
             {phase === 'correct' && classicalBits !== null && (
               <div className="flex flex-col h-full justify-center">
                 <p className="text-[10px] text-amber-400 mb-2 text-center animate-pulse">
@@ -210,7 +218,6 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
                       onClick={() => handleApplyCorrection(bits as 0 | 1 | 2 | 3)}
                       className="py-2 bg-slate-900 border border-slate-700 rounded-lg hover:border-amber-500 hover:bg-amber-950/30 transition-all active:scale-95 text-xs font-mono text-slate-300 hover:text-amber-400"
                     >
-                      {/* 盲測模式下隱藏前綴提示 */}
                       {!isBlindMode && <span className="opacity-50 mr-2">[{BIT_LABELS[bits]}]</span>}
                       {CORRECTION_GATES[bits]}
                     </button>
@@ -219,7 +226,6 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
               </div>
             )}
 
-            {/* 階段 4: 結算 (Success / Failed) */}
             {(phase === 'success' || phase === 'failed') && (
               <div
                 className={`flex flex-col items-center justify-center h-full rounded-xl border ${
@@ -258,7 +264,6 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
                   )}
                 </div>
 
-                {/* 🌟 雙按鈕機制：提供時光倒流 (Retry) */}
                 {phase === 'failed' && isBlindMode && failedCount < 2 ? (
                   <div className="flex gap-4">
                     <button
@@ -300,7 +305,6 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
         )}
       </div>
 
-      {/* 底部控制列 */}
       <div className="flex justify-between items-center mt-2 px-2">
         <button
           onClick={() => setIsExplaining(!isExplaining)}
