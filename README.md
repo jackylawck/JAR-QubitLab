@@ -52,8 +52,6 @@
   * 支援獨立全螢幕安裝與 `Network-First` 離線導覽回退策略，內建 `hadController` 守衛與 `vite:preloadError` 恢復機制，確保部署更新後零閃爍與零快取衝突。
 - **隱私第一與法規治理 (`src/components/GovernanceNotice.tsx` & `COMPLIANCE.md`)**：
   * 實施嚴格的**零數據留存（Zero Data Retention）**與預設隱私（Privacy by Design）。無後端 API、無追蹤 Cookie、無遙測日誌；明確區分確定性代數與 AI 監管邊界，遵循 US EAR § 734.7/734.8 公開科學教育軟體安全港條款。
-- **硬核科幻 F12 觀測終端彩蛋 (`src/utils/easterEgg.ts`)**：
-  * 主介面保持純粹嚴謹的學術物理用語；開啟瀏覽器開發者工具（F12 Console）則可解鎖致敬《銃夢》業子力學與經典機甲光譜密碼的雙語終端彩蛋。採用**雙層防混淆抗編譯綁定（Anti-Minifier Console Binding）**、**不可枚舉零括號 Getter 存取器**（支援直接輸入 `PALETTE`、`MELCHIZEDEK`、`FLAN`、`THE_LAST_ORDER`）、**Self-XSS 資安提示**、`FX_GC` 資源自動回收器，並自動遵循系統 `prefers-reduced-motion` 無障礙視覺保護偏好。
 
 ---
 
