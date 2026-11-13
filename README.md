@@ -1,3 +1,9 @@
+<!--
+  Project: J.A.R. QubitLab
+  Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+  ORCID: 0009-0006-0855-0842
+-->
+
 # ⚛️ J.A.R. QubitLab (Joint Applied Research)
 ### 互動式 3D 微觀量子力學實驗室 · Interactive 3D Quantum Mechanics Laboratory
 
@@ -22,20 +28,14 @@
 
 ## 📖 專案概覽 · Project Overview
 
-**J.A.R. QubitLab** 是一款專為瀏覽器與行動裝置打造的高保真、物理誠實（Physically Honest）的 3D 量子力學沙盒。本系統捨棄傳統預錄動畫的展示方式，完全由前端原生矩陣運算引擎即時演化單／多量子位元（Single & Multi-Qubit）的態向量（State Vector）與相位空間，涵蓋四大互動實驗展台：
+**J.A.R. QubitLab** 是一款專為現代瀏覽器與行動裝置打造的高保真、物理誠實（Physically Honest）的 3D 量子力學互動沙盒。系統捨棄傳統預錄動畫的展示方式，完全由前端原生矩陣運算引擎即時演化單／多量子位元（Single & Multi-Qubit）的態向量（State Vector）與相位空間，涵蓋四大互動實驗展台：
 
-1. **展台 1：疊加與測量坍縮（Superposition & Measurement Collapse）**
-   * 透過撥動分光桿施加阿達馬門（Hadamard Gate, $H$），使量子態由 $\vert 0\rangle$ 演化為等權重疊加態 $\frac{1}{\sqrt{2}}(\vert 0\rangle + \vert 1\rangle)$。
-   * 扣下觀測快門觸發波函數隨機坍縮（Wavefunction Collapse），將機率轉化為確定結果，搭配立體音效即時體驗量子隨機性。
-2. **展台 2：馬赫-曾德爾相位干涉（Mach-Zehnder Wave Interference）**
-   * 連續調整兩路微觀光徑之間的相位差 $\theta$（$0 \le \theta < 2\pi$）。
-   * 透過第二次對撞使波函數相長與相消干涉（Constructive & Destructive Interference），實現不經由空間傳遞的「機率完全搬運」。
-3. **展台 3：雙量子位元糾纏與貝爾態（Quantum Entanglement & Bell States）**
-   * 結合 $H$ 門與受控非門（$\text{CNOT}_{q_0 \to q_1}$），將可分態演化為最大糾纏貝爾態 $\vert\Phi^+\rangle = \frac{1}{\sqrt{2}}(\vert 00\rangle + \vert 11\rangle)$，並即時計算 Wootters 糾纏度（Concurrence $C = 1$）。
-   * 透過 20 次連續投影測量抽樣（20x Sampling），以統計分佈實證 $\vert 01\rangle$ 與 $\vert 10\rangle$ 的完全消滅與非定域性命運綁定。
-4. **展台 4：量子隱形傳態與不可克隆協議（Quantum Teleportation & No-Cloning）**
-   * 橫跨 Alice 端、經典雙位元通訊通道與 Bob 端的三區光學平台，結合目標態幽靈殼（Wireframe Ghost Hologram）視覺對照。
-   * 親手執行貝爾測量（Bell Measurement）、傳送 2-bit 經典封包並施加對應 $X / Z$ 么正修正閘，驗證「量子態可傳送但不可複製，且經典通訊受限於光速」的物理定律。
+| 展台 | 量子物理核心 | 數學與演化機制 | 互動操作體驗 |
+| :--- | :--- | :--- | :--- |
+| **展台 1** | **疊加與測量坍縮**<br>*Superposition & Collapse* | 阿達馬門 $H\vert 0\rangle = \frac{1}{\sqrt{2}}(\vert 0\rangle + \vert 1\rangle)$ 與玻恩定則投影測量 | 撥動分光桿製備等權重疊加態，扣下快門觸發隨機波函數坍縮 |
+| **展台 2** | **馬赫-曾德爾相位干涉**<br>*Mach-Zehnder Interference* | 相位門 $P(\theta)$ 連續演化（$0 \le \theta < 2\pi$）與二次分束對撞 | 拖曳 60Hz 磁吸相位舵盤，即時觀測相長增強與相消抵消的機率搬運 |
+| **展台 3** | **雙量子位元糾纏與貝爾態**<br>*Entanglement & Bell States* | $H_{q_0} + \text{CNOT}_{q_0 \to q_1}$ 演化出 $\vert\Phi^+\rangle = \frac{1}{\sqrt{2}}(\vert 00\rangle + \vert 11\rangle)$ 與 Wootters 糾纏度（$C = 1$） | 執行 20 次連續投影測量抽樣（20x Sampling），實證非定域性關聯與 $\vert 01\rangle/\vert 10\rangle$ 消滅 |
+| **展台 4** | **量子隱形傳態與不可克隆**<br>*Teleportation & No-Cloning* | 三量子位元貝爾基測量、2-bit 經典通訊與 $X / Z$ 么正修正閘 | 對照目標態幽靈殼（Wireframe Ghost）施加修正閘，驗證量子態重建與不可克隆定理 |
 
 ---
 
@@ -43,17 +43,17 @@
 
 - **雙軌零垃圾回收（Zero-GC）量子矩陣引擎 (`src/quantum/`)**：
   * `engine.ts`：採用 L1 快取友善的靜態 `Float64Array` Scratch 暫存區與無分支跨距演算法（Branchless Stride），搭配 1.5x 遲滯全局鎖相（Hysteresis Phase Lock）消除相位抖動。
-  * `tensorEngine.ts`：一維交錯複數狀態向量引擎，支援多量子位元么正演化、Wootters Concurrence 判定與協程可中斷抽樣。
+  * `tensorEngine.ts`：一維交錯複數狀態向量引擎，支援多量子位元么正演化、Wootters Concurrence 糾纏度判定與協程可中斷抽樣。
 - **企業級型別安全與防禦性渲染 (`tsconfig.json` & `src/utils/pool.ts`)**：
-  全面啟用 `strict` 與 `noUncheckedIndexedAccess: true`，杜絕陣列越界與執行期未定義參照；3D 渲染管線採用預分配靜態物件池（`POOL`）與顯式 GPU 資源釋放（`dispose`），確保跨裝置 60Hz/120Hz 零掉幀漂移與零記憶體洩漏。
-- **合成器級物理音效聲景 (`src/audio/soundEngine.ts`)**：
-  採用原生 Web Audio API 即時合成音訊，包含分光低頻震盪、水晶質感觀測快門、相消干涉的白噪音蒸發聲、經典位元脈衝與純四度／五度和弦，支援 iOS Safari 嚴格的音訊喚醒與節點自動斷開機制。
+  * 全面啟用 `strict` 與 `noUncheckedIndexedAccess: true`，從編譯期杜絕陣列越界與未定義參照；3D 渲染管線採用全域靜態幾何／材質共享、預分配物件池（`POOL`）與顯式 GPU 資源釋放（`dispose`），確保跨裝置 60Hz/120Hz 零掉幀漂移與零記憶體洩漏。
+- **原生合成器級物理音效聲景 (`src/audio/soundEngine.ts`)**：
+  * 採用 Web Audio API 即時合成音訊，包含分光低頻震盪、水晶質感觀測快門、相消干涉的白噪音蒸發聲、經典位元脈衝與純四度／五度和弦，內建 iOS Safari 嚴格音訊喚醒與節點自動斷開機制。
 - **離線優先 PWA 與無縫熱更新 (`public/sw.js` & `src/main.tsx`)**：
-  支援獨立全螢幕安裝與 `Network-First` 離線導覽回退策略，內建 `hadController` 守衛與 `vite:preloadError` 恢復機制，確保部署更新後零閃爍與零快取衝突。
+  * 支援獨立全螢幕安裝與 `Network-First` 離線導覽回退策略，內建 `hadController` 守衛與 `vite:preloadError` 恢復機制，確保部署更新後零閃爍與零快取衝突。
 - **隱私第一與法規治理 (`src/components/GovernanceNotice.tsx` & `COMPLIANCE.md`)**：
-  實施嚴格的**零數據保留（Zero Data Retention）**與預設隱私（Privacy by Design）。無後端 API、無追蹤 Cookie、無遙測日誌。嚴格區分確定性代數與 AI 監管邊界，遵循 EAR § 734.7 公開科學教育軟體安全港條款。
-- **賽博龐克 F12 觀測終端彩蛋 (`src/utils/easterEgg.ts`)**：
-  致敬經典硬科幻《銃夢》與業子力學（Karmic Dynamics）世界觀。內建雙語終端介面，利用 JavaScript 原生 Getter 攔截實現免括號指令（`MELCHIZEDEK`、`FLAN`、`THE_LAST_ORDER`），並觸發全畫面的量子態重塑 Glitch 特效。
+  * 實施嚴格的**零數據留存（Zero Data Retention）**與預設隱私（Privacy by Design）。無後端 API、無追蹤 Cookie、無遙測日誌；明確區分確定性代數與 AI 監管邊界，遵循 US EAR § 734.7/734.8 公開科學教育軟體安全港條款。
+- **硬核科幻 F12 觀測終端彩蛋 (`src/utils/easterEgg.ts`)**：
+  * 主介面保持純粹嚴謹的學術物理用語；開啟瀏覽器開發者工具（F12 Console）則可解鎖致敬《銃夢》業子力學與經典機甲光譜密碼的雙語終端彩蛋。採用**雙層防混淆抗編譯綁定（Anti-Minifier Console Binding）**、**不可枚舉零括號 Getter 存取器**（支援直接輸入 `PALETTE`、`MELCHIZEDEK`、`FLAN`、`THE_LAST_ORDER`）、**Self-XSS 資安提示**、`FX_GC` 資源自動回收器，並自動遵循系統 `prefers-reduced-motion` 無障礙視覺保護偏好。
 
 ---
 
@@ -63,66 +63,66 @@
 JAR-QubitLab/
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml                # GitHub Actions 雙 Job 部署與 CI 自動化驗證工作流
+│       └── deploy.yml                 # GitHub Actions 雙 Job 部署與 CI 自動化驗證工作流
 ├── public/
 │   ├── fonts/
-│   │   └── NotoSansMath-Regular.woff # 數學符號專用離線字型
-│   ├── JARQubitLab192icon.png       # 192x192 簡約雙態量子疊加 PWA 應用圖標
-│   ├── JARQubitLab512icon.png       # 512x512 高保真 3D 離子井光學雷射圖標
-│   ├── manifest.json                 # 現代 PWA 沉浸式獨立全螢幕設定檔
-│   └── sw.js                         # Service Worker 離線快取與導覽回退管理
+│   │   └── NotoSansMath-Regular.woff  # 數學符號專用離線字型
+│   ├── JARQubitLab192icon.png         # 192x192 簡約雙態量子疊加 PWA 應用圖標
+│   ├── JARQubitLab512icon.png         # 512x512 高保真 3D 離子井光學雷射圖標
+│   ├── manifest.json                  # 現代 PWA 沉浸式獨立全螢幕設定檔
+│   └── sw.js                          # Service Worker 離線快取與導覽回退管理
 ├── scripts/
-│   └── verify-build.mjs              # CI 建置安全、資產雜湊與 CSP 完整性驗證腳本
+│   └── verify-build.mjs               # CI 建置安全、資產雜湊與 CSP 完整性驗證腳本
 ├── src/
 │   ├── audio/
-│   │   └── soundEngine.ts            # Web Audio API 原生音效合成引擎
+│   │   └── soundEngine.ts             # Web Audio API 原生音效合成引擎
 │   ├── components/
 │   │   ├── console/
-│   │   │   ├── ConsoleBoothOne.tsx   # 展台 1 控制台面板
-│   │   │   ├── ConsoleBoothTwo.tsx   # 展台 2 控制台面板
-│   │   │   ├── ConsoleBoothThree.tsx # 展台 3 雙量子位元糾纏與 20x 抽樣控制台
-│   │   │   └── ConsoleBoothFour.tsx  # 展台 4 量子隱形傳態與經典糾錯控制台
-│   │   ├── BoothOne.tsx              # 展台 1：疊加與快門觀測 3D 場景
-│   │   ├── BoothTwo.tsx              # 展台 2：連續相位干涉與對撞 3D 場景
-│   │   ├── BoothThree.tsx            # 展台 3：雙量子位元機率能量柱與貝爾態軌道 3D 場景
-│   │   ├── BoothFour.tsx             # 展台 4：Alice/Bob 雙端台座、幽靈殼與經典通道 3D 場景
-│   │   ├── GovernanceNotice.tsx      # 企業級法規治理、出口管制與隱私合規聲明彈窗
-│   │   ├── InterferenceBurst.tsx     # 干涉對撞能量粒子爆發視覺效果（Zero-GC）
-│   │   ├── LanguageToggle.tsx        # 中英雙語切換按鈕（含跨分頁同步與手勢防穿透）
-│   │   ├── LaserBeam.tsx             # 3D 空間相干雷射導軌
-│   │   ├── PhaseDial.tsx             # 60Hz 連續相位舵盤旋轉控制器
-│   │   └── QuantumField.tsx          # 背景量子真空漲落粒子場
+│   │   │   ├── ConsoleBoothOne.tsx    # 展台 1 控制台面板
+│   │   │   ├── ConsoleBoothTwo.tsx    # 展台 2 控制台面板
+│   │   │   ├── ConsoleBoothThree.tsx  # 展台 3 雙量子位元糾纏與 20x 抽樣控制台
+│   │   │   └── ConsoleBoothFour.tsx   # 展台 4 量子隱形傳態與經典糾錯控制台
+│   │   ├── BoothOne.tsx               # 展台 1：疊加與快門觀測 3D 場景
+│   │   ├── BoothTwo.tsx               # 展台 2：連續相位干涉與對撞 3D 場景
+│   │   ├── BoothThree.tsx             # 展台 3：雙量子位元機率能量柱與貝爾態光軌 3D 場景
+│   │   ├── BoothFour.tsx              # 展台 4：Alice/Bob 雙端台座、幽靈殼與經典通道 3D 場景
+│   │   ├── GovernanceNotice.tsx       # 企業級法規治理、出口管制與隱私合規聲明彈窗
+│   │   ├── InterferenceBurst.tsx      # 干涉對撞能量粒子爆發視覺效果（Zero-GC）
+│   │   ├── LanguageToggle.tsx         # 中英雙語切換按鈕（含跨分頁同步與手勢防穿透）
+│   │   ├── LaserBeam.tsx              # 3D 空間相干雷射導軌（單位圓柱體 Zero-GC 縮放）
+│   │   ├── PhaseDial.tsx              # 60Hz 連續相位舵盤旋轉控制器
+│   │   └── QuantumField.tsx           # 背景量子真空漲落粒子場（頂點色彩 Zero-GC）
 │   ├── hooks/
-│   │   ├── useAnimationLock.ts       # 動畫播放全域鎖（含看門狗防呆與併發防護）
-│   │   └── usePointerDial.ts         # 支援移動端觸控與角域磁吸的舵盤追蹤 Hook
+│   │   ├── useAnimationLock.ts        # 動畫播放全域鎖（含看門狗防呆與併發防護）
+│   │   └── usePointerDial.ts          # 支援移動端觸控與角域磁吸的舵盤追蹤 Hook
 │   ├── i18n/
-│   │   └── translations.ts           # 繁體中文 / 英文雙語字典定義
+│   │   └── translations.ts            # 繁體中文 / 英文雙語字典定義
 │   ├── quantum/
-│   │   ├── engine.test.ts            # 量子態酉性、Big-Endian 與干涉完整性單元測試
-│   │   ├── engine.ts                 # 核心量子態演化數學引擎（L1 Scratchpad 純函數）
-│   │   ├── tensorEngine.ts           # 多量子位元張量態向量與糾纏度計算引擎
-│   │   └── types.ts                  # 量子態向量、唯讀複數振幅與演化契約型別
+│   │   ├── engine.test.ts             # 量子態酉性、Big-Endian 與干涉完整性單元測試
+│   │   ├── engine.ts                  # 核心量子態演化數學引擎（L1 Scratchpad 純函數）
+│   │   ├── tensorEngine.ts            # 多量子位元張量態向量與糾纏度計算引擎
+│   │   └── types.ts                   # 量子態向量、唯讀複數振幅與演化契約型別
 │   ├── store/
-│   │   ├── localeStore.ts            # 語系狀態管理（含跨分頁同步與 HMR 清理）
-│   │   ├── quantumStore.ts           # 展台 1 & 2 量子態全域狀態容器（Zustand）
-│   │   ├── tensorStore.ts            # 展台 3 多量子位元與協程抽樣狀態容器（Zustand）
-│   │   └── teleportStore.ts          # 展台 4 隱形傳態階段與雙位元糾錯狀態容器
+│   │   ├── localeStore.ts             # 語系狀態管理（含跨分頁同步與 HMR 清理）
+│   │   ├── quantumStore.ts            # 展台 1 & 2 量子態全域狀態容器（Zustand）
+│   │   ├── tensorStore.ts             # 展台 3 多量子位元與協程抽樣狀態容器（Zustand）
+│   │   └── teleportStore.ts           # 展台 4 隱形傳態階段與雙位元糾錯狀態容器
 │   ├── utils/
-│   │   ├── easterEgg.ts              # F12 賽博龐克雙語互動彩蛋
-│   │   └── pool.ts                   # Three.js 3D 運算靜態物件池（Zero-GC Pool）
-│   ├── App.tsx                       # 主應用程式入口、畫布相機與四展台調度中心
-│   ├── constants.ts                  # 集中化環境變數、靜態資源與物理容差常數
-│   ├── index.css                     # Tailwind CSS 與基礎無障礙樣式
-│   ├── main.tsx                      # React 18 掛載點、PWA 熱更新與彩蛋初始化
-│   └── vite-env.d.ts                 # Vite TypeScript 環境與著色器型別宣告
+│   │   ├── easterEgg.ts               # F12 賽博龐克雙語互動彩蛋（含 FX_GC 與防混淆綁定）
+│   │   └── pool.ts                    # Three.js 3D 運算靜態物件池（Zero-GC Pool）
+│   ├── App.tsx                        # 主應用程式入口、畫布相機與四展台調度中心
+│   ├── constants.ts                   # 集中化環境變數、靜態資源與物理容差常數
+│   ├── index.css                      # Tailwind CSS 與基礎無障礙樣式
+│   ├── main.tsx                       # React 18 掛載點、PWA 熱更新與彩蛋初始化
+│   └── vite-env.d.ts                  # Vite TypeScript 環境與著色器型別宣告
 ├── .gitignore
-├── COMPLIANCE.md                     # 法律治理、出口管制（EAR）與非 AI 豁免聲明公約
-├── index.html                        # 嚴格 CSP、Permissions-Policy 與現代 PWA 標籤
-├── package.json                      # 專案依賴與建置腳本（含 engines 版本鎖定）
-├── postcss.config.js                 # PostCSS 編譯管線配置
-├── tailwind.config.js                # Tailwind CSS 配置（含 Safe Area 與動態視口）
-├── tsconfig.json                     # 嚴格模式 TypeScript 編譯設定
-└── vite.config.ts                    # Vite 打包、跨平台分塊與零依賴 Vitest 配置
+├── COMPLIANCE.md                      # 法律治理、出口管制（EAR）與非 AI 豁免聲明公約
+├── index.html                         # 嚴格 CSP、Permissions-Policy 與現代 PWA 標籤
+├── package.json                       # 專案依賴與建置腳本（含 engines 版本鎖定）
+├── postcss.config.js                  # PostCSS 編譯管線配置
+├── tailwind.config.js                 # Tailwind CSS 配置（含 Safe Area 與動態視口）
+├── tsconfig.json                      # 嚴格模式 TypeScript 編譯設定
+└── vite.config.ts                     # Vite 打包、跨平台分塊與零依賴 Vitest 配置
 
 ```
 
@@ -130,14 +130,14 @@ JAR-QubitLab/
 
 ## 🛡️ 法規治理與出口管制 · Governance & Safe Harbor
 
-本項目在開發過程中嚴格落實法規定界，相關法律聲明已完整收錄於 [`COMPLIANCE.md`](COMPLIANCE.md)：
+本項目在開發過程中嚴格落實法規定界，完整法律聲明已收錄於 [`COMPLIANCE.md`](COMPLIANCE.md)：
 
 1. **確定性物理引擎聲明（Non-AI System）**：
-系統核心均為確定性線性代數矩陣變換，**不包含機器學習、神經網路或生成式 AI 演算法**，明確排除於歐盟《人工智能法案》（EU AI Act 2024/1689）、國家網信辦相關規定及 ISO/IEC 42001 審計範疇之外。
+系統核心均為確定性線性代數矩陣變換，**不包含機器學習、神經網路或生成式 AI 演算法**，明確排除於歐盟《人工智能法案》（EU AI Act 2024/1689）第 3(1) 條、國家網信辦《生成式人工智能服務管理暫行辦法》及 ISO/IEC 42001 審計範疇之外。
 2. **公開科學教育安全港（Export Controls Safe Harbor）**：
-本系統呈現之物理模型均來自公開教科書之基礎科學原理。符合美國出口管制條例 EAR 15 CFR § 734.7 公開發布教育軟體之法定豁免，且不包含軍用密碼破解、低溫稀釋製冷控制等敏感兩用物項。
+本系統模擬之四大物理模組均源自公開教科書基礎原理，符合美國出口管制條例 EAR 15 CFR § 734.7 & § 734.8 公開教育與基礎科研法定豁免，且不包含量子密鑰分發（QKD）硬體驅動、容錯量子糾錯（QEC）、軍用密碼破解或低溫製冷控制等敏感兩用物項。
 3. **架構性隱私保護（Privacy by Design）**：
-系統完全於客戶端記憶體封閉運作，符合香港《個人資料（私隱）條例》（Cap. 486 PDPO）與歐盟 GDPR 第 26 條之非個人資料標準。嚴格實施 W3C 內容安全策略（CSP），自底層根絕伺服器端資料外洩威脅。
+系統完全於客戶端記憶體封閉運作，符合香港《個人資料（私隱）條例》（Cap. 486 PDPO）第 2(1) 條、歐盟 GDPR 序言第 26 條及 ePrivacy 嚴格必要功能性儲存標準。實施嚴格 W3C 內容安全策略（CSP），從架構源頭根絕伺服器端資料外洩風險。
 
 ---
 
@@ -145,8 +145,8 @@ JAR-QubitLab/
 
 ### 系統需求
 
-* Node.js 20.x 或以上
-* npm 10.x 或以上
+* **Node.js**：20.x 或以上
+* **npm**：10.x 或以上
 
 ### 安裝與啟動
 
@@ -185,5 +185,7 @@ node scripts/verify-build.mjs
 ## 📜 授權協議 · License
 
 本專案採用 [MIT License](https://www.google.com/search?q=LICENSE) 授權開源。歡迎學術交流、教育演示與個人研究非商業使用。
+
+
 
 
