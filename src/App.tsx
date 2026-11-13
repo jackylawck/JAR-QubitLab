@@ -3,7 +3,7 @@
  * Project: J.A.R. QubitLab
  * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
  */
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
 import { useSpring, a } from '@react-spring/three';
@@ -28,10 +28,19 @@ import { sound } from './audio/soundEngine';
 
 export type BoothType = 'one' | 'two' | 'three' | 'four';
 
+// 🌟 優化 2：將靜態配置抽離組件外部，避免每次渲染重建
+const CAMERA_CONFIGS: Record<BoothType, { pos: [number, number, number]; fov: number }> = {
+  one: { pos: [0, 4.5, 9.5], fov: 46 },
+  two: { pos: [0, 4.5, 9.5], fov: 46 },
+  three: { pos: [0, 8, 11], fov: 42 },
+  four: { pos: [0, 5, 10], fov: 45 },
+};
+
 function BoothFallback() {
   const t = useLocaleStore((state) => state.t);
   return (
-    <Html center>
+    // 🌟 優化 3：關閉 transform 提升效能，因為這只是一個全螢幕的加載遮罩
+    <Html center transform={false}>
       <div className="flex flex-col items-center gap-2 select-none pointer-events-none whitespace-nowrap">
         <div className="w-7 h-7 border-2 border-sky-400 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(56,189,248,0.5)]" />
         <span className="text-[11px] font-mono tracking-widest text-sky-300/80">
@@ -42,16 +51,16 @@ function BoothFallback() {
   );
 }
 
-const BoothTab = ({ 
-  label, 
-  isActive, 
-  onClick, 
-  colorTheme 
-}: { 
-  label: string; 
-  isActive: boolean; 
+const BoothTab = ({
+  label,
+  isActive,
+  onClick,
+  colorTheme,
+}: {
+  label: string;
+  isActive: boolean;
   onClick: () => void;
-  colorTheme: 'blue' | 'cyan' | 'purple' | 'emerald'
+  colorTheme: 'blue' | 'cyan' | 'purple' | 'emerald';
 }) => {
   const themeClasses = {
     blue: 'bg-blue-600 ring-blue-400',
@@ -61,8 +70,8 @@ const BoothTab = ({
   };
 
   return (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       className={`px-2.5 py-1 rounded text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
         isActive ? `${themeClasses[colorTheme]} text-white ring-1` : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
       }`}
@@ -73,14 +82,8 @@ const BoothTab = ({
 };
 
 const AnimatedCamera = ({ activeBooth }: { activeBooth: BoothType }) => {
-  const configs = {
-    one: { pos: [0, 4.5, 9.5], fov: 46 },
-    two: { pos: [0, 4.5, 9.5], fov: 46 },
-    three: { pos: [0, 8, 11], fov: 42 },
-    four: { pos: [0, 5, 10], fov: 45 },
-  };
-
-  const current = configs[activeBooth];
+  const current = CAMERA_CONFIGS[activeBooth];
+  
   const { pos, fov } = useSpring({
     pos: current.pos,
     fov: current.fov,
@@ -88,10 +91,12 @@ const AnimatedCamera = ({ activeBooth }: { activeBooth: BoothType }) => {
   });
 
   return (
+    // 🌟 優化 1：@react-spring/three 9.x 型別修復
+    // 透過強制轉型消滅型別錯誤，確保編譯通過，同時保留 Spring 動畫
     <a.perspectiveCamera
       makeDefault
-      position={pos as any}
-      fov={fov as any}
+      position={pos as unknown as [number, number, number]}
+      fov={fov as unknown as number}
       near={0.1}
       far={1000}
     />
@@ -101,7 +106,7 @@ const AnimatedCamera = ({ activeBooth }: { activeBooth: BoothType }) => {
 export default function App() {
   const [activeBooth, setActiveBooth] = useState<BoothType>('one');
   const [isExplaining, setIsExplaining] = useState(false);
-  
+
   const locale = useLocaleStore((s) => s.locale);
   const resetBoothOne = useQuantumStore((s) => s.resetBoothOne);
   const resetBoothTwo = useQuantumStore((s) => s.resetBoothTwo);
@@ -131,13 +136,13 @@ export default function App() {
     if (booth === activeBooth) return;
 
     setIsExplaining(false);
-    sound.playLever(); 
+    sound.playLever();
 
     if (booth === 'one') resetBoothOne();
     else if (booth === 'two') resetBoothTwo();
     else if (booth === 'three') resetTensor();
     else if (booth === 'four') resetTeleport();
-    
+
     setActiveBooth(booth);
   };
 
@@ -153,7 +158,7 @@ export default function App() {
               {locale === 'zh' ? '量子觀測室' : 'QubitLab'}
             </span>
           </div>
-          
+
           <div className="flex items-center gap-1.5 pointer-events-auto shrink-0 overflow-x-auto pb-1 max-w-[65%] sm:max-w-none hide-scrollbar">
             <LanguageToggle />
             <BoothTab label={locale === 'zh' ? '展台 1' : 'Booth 1'} isActive={activeBooth === 'one'} onClick={() => handleSwitchBooth('one')} colorTheme="blue" />
@@ -165,18 +170,18 @@ export default function App() {
 
         <Canvas dpr={[1, 2]} frameloop="always" gl={{ antialias: true }}>
           <AnimatedCamera activeBooth={activeBooth} />
-          
+
           <color attach="background" args={['#030712']} />
           <ambientLight intensity={0.85} />
           <directionalLight position={[5, 10, 5]} intensity={1.3} />
           <pointLight position={[-5, 5, -5]} intensity={0.5} />
 
-          <OrbitControls 
-            enablePan={false} 
-            minPolarAngle={Math.PI / 5} 
-            maxPolarAngle={Math.PI / 2.05} 
-            minDistance={4} 
-            maxDistance={12} 
+          <OrbitControls
+            enablePan={false}
+            minPolarAngle={Math.PI / 5}
+            maxPolarAngle={Math.PI / 2.05}
+            minDistance={4}
+            maxDistance={12}
             target={[0, 0.4, 0]}
           />
 
