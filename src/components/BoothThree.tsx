@@ -88,7 +88,9 @@ export const BoothThree = () => {
     return {
       pillarGeo: cyl,
       ringGeo: new THREE.RingGeometry(0.54, 0.72, 32),
-      trackGeo: new THREE.PlaneGeometry(6.8, 0.36),
+      // 長度 5.0 精準連接 (-2, 1.5) 與 (2, -1.5) 兩柱圓心，不凸出邊緣
+      trackGlowGeo: new THREE.PlaneGeometry(5.0, 0.34),
+      trackCoreGeo: new THREE.PlaneGeometry(5.0, 0.12),
 
       baseMat: new THREE.MeshStandardMaterial({
         color: '#090a0f',
@@ -160,11 +162,11 @@ export const BoothThree = () => {
         polygonOffsetUnits: -1,
       }),
 
-      // 雙槍交織軌道：朗基努斯赤紅 + 卡西烏斯蒼藍（Zero-GC 共用材質）
-      trackLonginusMat: new THREE.MeshBasicMaterial({
-        color: '#e11d48',
+      // 卡西烏斯之槍（Spear of Cassius）雙層赤紅光軌（Zero-GC 共用材質）
+      trackCassiusGlowMat: new THREE.MeshBasicMaterial({
+        color: '#dc2626',
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.65,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         toneMapped: false,
@@ -172,10 +174,10 @@ export const BoothThree = () => {
         polygonOffsetFactor: -2,
         polygonOffsetUnits: -2,
       }),
-      trackCassiusMat: new THREE.MeshBasicMaterial({
-        color: '#38bdf8',
+      trackCassiusCoreMat: new THREE.MeshBasicMaterial({
+        color: '#ff1e42',
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.95,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         toneMapped: false,
@@ -208,11 +210,11 @@ export const BoothThree = () => {
         <primitive object={resources.baseMat} attach="material" />
       </RoundedBox>
 
-      {/* 貝爾態對角線雙槍交織光軌 */}
+      {/* 貝爾態對角線光軌（卡西烏斯之槍赤紅光束） */}
       {isEntangled && (
         <group position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0.6435]}>
-          <mesh geometry={resources.trackGeo} material={resources.trackLonginusMat} dispose={null} />
-          <mesh geometry={resources.trackGeo} material={resources.trackCassiusMat} dispose={null} />
+          <mesh geometry={resources.trackGlowGeo} material={resources.trackCassiusGlowMat} dispose={null} />
+          <mesh geometry={resources.trackCoreGeo} material={resources.trackCassiusCoreMat} dispose={null} />
         </group>
       )}
 
