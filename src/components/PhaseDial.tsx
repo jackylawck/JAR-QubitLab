@@ -1,4 +1,9 @@
 // src/components/PhaseDial.tsx
+/*
+ * Project: J.A.R. QubitLab
+ * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+ * Theme: EVA-02 Phase Dial (Red to Yellow)
+ */
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { useThree, ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
@@ -17,14 +22,28 @@ const DIAL_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.15);
 const INTERSECT_POINT = new THREE.Vector3();
 const NDC_VEC = new THREE.Vector2();
 
+// 🌟 Zero-GC 幾何體與靜態材質緩存
+const SHARED_GEOMETRY = {
+  base: new THREE.CylinderGeometry(0.9, 1.0, 0.1, 32),
+  ring: new THREE.RingGeometry(0.65, 0.75, 48),
+  pointerHub: new THREE.CylinderGeometry(0.15, 0.15, 0.15, 16),
+  pointerCone: new THREE.ConeGeometry(0.12, 0.45, 16),
+};
+
+const SHARED_MATERIALS = {
+  base: new THREE.MeshStandardMaterial({ color: '#111827', metalness: 0.6, roughness: 0.4 }),
+  pointerHub: new THREE.MeshStandardMaterial({ color: '#f8fafc', metalness: 0.8, roughness: 0.2 }),
+};
+
 export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDialProps) => {
   const t = useLocaleStore((state) => state.t);
   const [isDragging, setIsDragging] = useState(false);
   const lastSnap = useRef<number | null>(null);
   const { camera, gl, raycaster } = useThree();
 
-  const BLUE = useMemo(() => new THREE.Color('#38bdf8'), []);
-  const PINK = useMemo(() => new THREE.Color('#ec4899'), []);
+  // 🌟 EVA-02 主題配色：同相 (0) 為深紅，反相 (π) 為亮黃
+  const RED = useMemo(() => new THREE.Color('#dc2626'), []);
+  const YELLOW = useMemo(() => new THREE.Color('#facc15'), []);
   const tmpColor = useMemo(() => new THREE.Color(), []);
 
   const triggerHaptic = useCallback((pattern: number | number[]) => {
@@ -33,7 +52,7 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
     }
   }, []);
 
-  // Latest Ref Pattern：快取最新的 onPhaseChange 引用，消除拖曳時頻繁綁定/解綁 window 事件的 GC 開銷
+  // 快取最新的 onPhaseChange 引用，消除拖曳時頻繁綁定/解綁 window 事件的 GC 開銷
   const onPhaseChangeRef = useRef(onPhaseChange);
   useEffect(() => {
     onPhaseChangeRef.current = onPhaseChange;
@@ -48,6 +67,7 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
       if (e.buttons === 0) {
         setIsDragging(false);
         lastSnap.current = null;
+        document.body.style.cursor = 'auto';
         return;
       }
 
@@ -75,7 +95,7 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
           if (Math.abs(rad - s) < 0.08) {
             if (lastSnap.current !== s) {
               lastSnap.current = s;
-              triggerHaptic([15, 20, 15]);
+              triggerHaptic([20, 30, 20]); // 增強吸附手感
             }
             rad = s % (2 * Math.PI);
             break;
@@ -92,6 +112,7 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
     const handleGlobalUp = () => {
       setIsDragging(false);
       lastSnap.current = null;
+      document.body.style.cursor = 'auto';
     };
 
     window.addEventListener('pointermove', handleGlobalMove);
@@ -109,55 +130,66 @@ export const PhaseDial = ({ phase, onPhaseChange, disabled, isStandby }: PhaseDi
     if (disabled || isStandby) return;
     e.stopPropagation();
     setIsDragging(true);
-    triggerHaptic(12);
+    triggerHaptic(15);
+    document.body.style.cursor = 'grabbing';
   };
 
-  // 顏色隨相位在天藍 (0) 與洋紅 (π) 之間平滑漸變
+  const handlePointerOver = () => {
+    if (!disabled && !isStandby && !isDragging) {
+      document.body.style.cursor = 'grab';
+    }
+  };
+
+  const handlePointerOut = () => {
+    if (!isDragging) {
+      document.body.style.cursor = 'auto';
+    }
+  };
+
+  // 🌟 EVA-02 顏色隨相位在深紅 (0) 與亮黃 (π) 之間平滑漸變
   const tRatio = Math.abs(Math.sin(phase / 2));
   const dialColor = isStandby 
     ? '#64748b' 
-    : tmpColor.lerpColors(BLUE, PINK, tRatio).getStyle();
+    : tmpColor.lerpColors(RED, YELLOW, tRatio).getStyle();
 
   const degText = Math.round((phase * 180) / Math.PI);
 
   return (
-    <group position={[0, 0, 1.8]} onPointerDown={handlePointerDown}>
+    <group 
+      position={[0, 0, 1.8]} 
+      onPointerDown={handlePointerDown}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
       {/* 舵盤底座 */}
-      <mesh position={[0, 0.05, 0]}>
-        <cylinderGeometry args={[0.9, 1.0, 0.1, 32]} />
-        <meshStandardMaterial color="#1e1e2d" metalness={0.7} roughness={0.3} />
-      </mesh>
+      <mesh position={[0, 0.05, 0]} geometry={SHARED_GEOMETRY.base} material={SHARED_MATERIALS.base} dispose={null} />
 
       {/* 連續動態發光刻度環 */}
-      <mesh position={[0, 0.11, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.65, 0.75, 48]} />
+      <mesh position={[0, 0.11, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={SHARED_GEOMETRY.ring} dispose={null}>
         <meshBasicMaterial color={dialColor} toneMapped={false} />
       </mesh>
 
       {/* 動態幾何指針 */}
       <group position={[0, 0.15, 0]} rotation={[0, -phase, 0]}>
-        <mesh>
-          <cylinderGeometry args={[0.15, 0.15, 0.15, 16]} />
-          <meshStandardMaterial color="#f8fafc" metalness={0.9} roughness={0.1} />
-        </mesh>
-        <mesh position={[0, 0, -0.45]} rotation={[-Math.PI / 2, 0, 0]}>
-          <coneGeometry args={[0.12, 0.4, 16]} />
+        <mesh geometry={SHARED_GEOMETRY.pointerHub} material={SHARED_MATERIALS.pointerHub} dispose={null} />
+        
+        <mesh position={[0, 0, -0.48]} rotation={[-Math.PI / 2, 0, 0]} geometry={SHARED_GEOMETRY.pointerCone} dispose={null}>
           <meshStandardMaterial
             color={dialColor}
             emissive={dialColor}
-            emissiveIntensity={isStandby ? 0 : 0.8}
+            emissiveIntensity={isStandby ? 0 : 0.9}
           />
         </mesh>
       </group>
 
-      <Html position={[0, -0.4, 0]} center style={{ pointerEvents: 'none' }}>
+      <Html position={[0, -0.4, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <div className={`px-3 py-1 rounded border select-none whitespace-nowrap text-xs flex items-center gap-1.5 shadow-lg ${
           isStandby 
             ? 'bg-slate-900/80 text-slate-400 border-slate-700/50' 
             : 'bg-black/85 text-white border-white/20'
         }`}>
           <span>🧭 {t.common.phaseShift}</span>
-          <span className="font-mono font-bold">
+          <span className={`font-mono font-bold ${!isStandby && degText === 180 ? 'text-yellow-400' : !isStandby && degText === 0 ? 'text-red-400' : ''}`}>
             {isStandby ? t.common.standby : `${degText}° (${phase.toFixed(2)} rad)`}
           </span>
         </div>
