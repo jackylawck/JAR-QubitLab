@@ -1,4 +1,9 @@
 // src/components/QuantumField.tsx
+/*
+ * Project: J.A.R. QubitLab
+ * Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+ * Description: Global Quantum Fluctuation Field (Zero-GC & Vertex Colors)
+ */
 import { useMemo, useRef } from 'react'; 
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -19,23 +24,51 @@ const PARTICLE_TEXTURE = (() => {
   return new THREE.CanvasTexture(canvas);
 })();
 
+// 🌟 優化 1：全域單例材質，徹底消滅元件 Render 時的 GC 負擔
+const FIELD_MATERIAL = new THREE.PointsMaterial({
+  size: 0.16,
+  vertexColors: true, // 啟用頂點獨立色彩
+  transparent: true,
+  opacity: 0.5,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  map: PARTICLE_TEXTURE,
+  toneMapped: false,
+});
+
 export function QuantumField({ count = 500 }: { count?: number }) {
   const pointsRef = useRef<THREE.Points>(null);
 
-  const [positions, originalY, phases] = useMemo(() => {
+  // 🌟 優化 2：引入頂點色彩 (colors)，讓背景擁有深藍至紫色的量子層次感
+  const [positions, colors, originalY, phases] = useMemo(() => {
     const pos = new Float32Array(count * 3);
+    const col = new Float32Array(count * 3);
     const origY = new Float32Array(count);
     const ph = new Float32Array(count);
     
+    const color1 = new THREE.Color('#38bdf8'); // 科研藍
+    const color2 = new THREE.Color('#a855f7'); // 量子紫
+    const tmpColor = new THREE.Color();
+
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 30;
+      const idx = i * 3;
+      // 空間分佈
+      pos[idx] = (Math.random() - 0.5) * 30;
       const y = (Math.random() - 0.5) * 18 + 1;
-      pos[i * 3 + 1] = y;
+      pos[idx + 1] = y;
       origY[i] = y;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 30;
+      pos[idx + 2] = (Math.random() - 0.5) * 30;
+      
+      // 相位偏移
       ph[i] = Math.random() * Math.PI * 2;
+
+      // 隨機色彩內插
+      tmpColor.lerpColors(color1, color2, Math.random());
+      col[idx] = tmpColor.r;
+      col[idx + 1] = tmpColor.g;
+      col[idx + 2] = tmpColor.b;
     }
-    return [pos, origY, ph];
+    return [pos, col, origY, ph];
   }, [count]);
 
   useFrame((state) => {
@@ -47,39 +80,30 @@ export function QuantumField({ count = 500 }: { count?: number }) {
     const posAttr = pointsRef.current.geometry.attributes.position;
     if (!posAttr) return; 
 
+    // 🌟 優化 3：直接提取純陣列引用，省去迴圈內屬性查找與 TypeScript 斷言
     const array = posAttr.array as Float32Array;
-
-    // 🌟 優化 1：提取不變量，省下迴圈內的重複乘法
     const timeOffset = t * 1.4;
 
-    // 🌟 優化 2：消滅 ?? 分支。Float32Array 內必定有值，用 ! 滿足 TS 即可
     for (let i = 0; i < count; i++) {
-      array[i * 3 + 1] = originalY[i]! + Math.sin(timeOffset + phases[i]!) * 0.12;
+      array[i * 3 + 1] = originalY[i] + Math.sin(timeOffset + phases[i]) * 0.12;
     }
     
     posAttr.needsUpdate = true;
   });
 
   return (
-    <points ref={pointsRef}>
+    <points ref={pointsRef} material={FIELD_MATERIAL}>
       <bufferGeometry>
-        {/* 🌟 優化 3：明確標示 DynamicDrawUsage，提升 WebGL CPU->GPU 資料傳輸效能 */}
         <bufferAttribute 
           attach="attributes-position" 
           args={[positions, 3]} 
           usage={THREE.DynamicDrawUsage} 
         />
+        <bufferAttribute 
+          attach="attributes-color" 
+          args={[colors, 3]} 
+        />
       </bufferGeometry>
-      <pointsMaterial
-        size={0.16} 
-        color="#38bdf8"
-        transparent
-        opacity={0.4}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-        map={PARTICLE_TEXTURE} 
-        toneMapped={false}     
-      />
     </points>
   );
 }
