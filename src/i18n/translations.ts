@@ -1,7 +1,6 @@
 // src/i18n/translations.ts
 export type Locale = 'zh' | 'en';
 
-// 🌟 優化 1：補齊 TranslationSchema 以符合全專案需求
 export interface TranslationSchema {
   common: {
     pathA: string;
@@ -10,7 +9,7 @@ export interface TranslationSchema {
     interfere: string;
     measure: string;
     standby: string;
-    phaseShift: string; // 🌟 修復 TS2339: PhaseDial 所需的鍵值
+    phaseShift: string;
   };
   boothOne: {
     title: string;
@@ -22,8 +21,13 @@ export interface TranslationSchema {
     desc: string;
     explanation: string;
   };
-  // 🌟 修復 TS2339: 補齊展台 3 的字典結構
   boothThree: {
+    title: string;
+    desc: string;
+    explanation: string;
+  };
+  // 🌟 擴充 1：補齊展台 4 的型別定義
+  boothFour: {
     title: string;
     desc: string;
     explanation: string;
@@ -38,9 +42,8 @@ export const translations: Record<Locale, TranslationSchema> = {
       splitBeam: '撥動分光 (H)',
       interfere: '匯流對撞',
       measure: '拍下快門 (觀測)',
-      // 🌟 優化 2：堅持 UX 語義，保留行為提示
       standby: '待機 (需先分光)', 
-      phaseShift: '相位差 (Phase Shift)', // 🌟 補齊 PhaseDial 缺失的文案
+      phaseShift: '相位差 (Phase Shift)',
     },
     boothOne: {
       title: '疊加與坍縮',
@@ -52,12 +55,17 @@ export const translations: Record<Locale, TranslationSchema> = {
       desc: '分光後調整相位差，對撞時將透過相消干涉把機率全數搬運至另一端。',
       explanation: '若為 0° 同相，對撞後右路消亡，能量 100% 匯聚至 Path A；若翻轉為 π（180°）反相，左路相消蒸發，機率 100% 被搬運至 Path B！',
     },
-    // 🌟 補齊展台 3 中文文案
     boothThree: {
       title: '量子糾纏與貝爾態',
       desc: 'H 門製造疊加，CNOT 建立糾纏，抽樣見證統計鐵證。',
       explanation: '按 H 門讓 Q0 進入疊加態，再按 CNOT 建立量子糾纏（貝爾態）。抽樣 20 次後你會發現，結果永遠只有 |00⟩ 和 |11⟩，另外兩種可能性完全消滅。這就是量子糾纏的統計鐵證——它們的命運已經綁定。',
     },
+    // 🌟 擴充 2：補齊展台 4 隱形傳態的中文文案
+    boothFour: {
+      title: '量子隱形傳態',
+      desc: '利用糾纏對與經典位元，將未知量子態跨空間重塑，不可克隆。',
+      explanation: '量子隱形傳態利用預先共享的貝爾糾纏對（q1, q2）與兩位元經典通訊，將未知量子態 |ψ⟩ 從 Alice（q0）精確重建至 Bob（q2），過程中不會複製量子態（遵守不可克隆定理）。',
+    }
   },
   en: {
     common: {
@@ -66,8 +74,9 @@ export const translations: Record<Locale, TranslationSchema> = {
       splitBeam: 'Split Beam (H)',
       interfere: 'Recombine',
       measure: 'Shutter (Observe)',
-      standby: 'STANDBY (Split First)', // 🌟 對齊中文的行為提示
-      phaseShift: 'Phase Shift', // 🌟 補齊 PhaseDial 缺失的文案
+      // 🌟 優化 3：英文改用更精確且省空間的提示
+      standby: 'Awaiting H Gate', 
+      phaseShift: 'Phase Shift',
     },
     boothOne: {
       title: 'Superposition & Collapse',
@@ -79,11 +88,16 @@ export const translations: Record<Locale, TranslationSchema> = {
       desc: 'Split paths, tune phase difference, and observe destructive cancellation.',
       explanation: 'In-phase (0°): Destructive interference eliminates Path B, 100% amplitude stays in Path A. Anti-phase (π): Path A cancels out and 100% amplitude is transported into Path B!',
     },
-    // 🌟 補齊展台 3 英文文案
     boothThree: {
       title: 'Entanglement & Bell States',
       desc: 'Create superposition with H, entangle with CNOT, and observe statistical proof.',
       explanation: 'Apply H to Q0 to create superposition, then CNOT to entangle (Bell State). After 20 samples, you will observe only |00⟩ and |11⟩. The other possibilities are eliminated—this is the statistical proof of quantum entanglement.',
     },
+    // 🌟 擴充 2：補齊展台 4 隱形傳態的英文文案
+    boothFour: {
+      title: 'Quantum Teleportation',
+      desc: 'Reconstruct an unknown state across space using entanglement and classical bits.',
+      explanation: 'Quantum teleportation reconstructs an unknown state |ψ⟩ from Alice (q0) to Bob (q2) using a shared Bell pair (q1, q2) and 2 classical bits, strictly obeying the No-Cloning Theorem.',
+    }
   },
 };
