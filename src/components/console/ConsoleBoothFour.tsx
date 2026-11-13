@@ -65,7 +65,7 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
     if (useTeleportStore.getState().phase !== 'correct' || isAnimating) return;
 
     sound.playTick(1);
-    requestActionLock(500);
+    requestActionLock(650); // 配合 3D LCL 封包飛行時間稍加長防抖鎖
     applyCorrection(bits);
 
     if (soundTimerRef.current !== null) clearTimeout(soundTimerRef.current);
@@ -74,15 +74,15 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
       if (currentPhase === 'success') sound.playSuccess();
       else if (currentPhase === 'failed') sound.playFail();
       soundTimerRef.current = null;
-    }, 100);
+    }, 150);
   };
 
   const failureMessage =
     phase === 'failed' && lastUserBits !== null && classicalBits !== null
       ? isBlindMode && failedCount === 1
         ? locale === 'zh'
-          ? '❌ 修正閘不正確。請對比 Bob 的實體柱與目標態（幽靈殼）的差異：高度不同需 X 閘，相位相反需 Z 閘。'
-          : "❌ Incorrect gate. Compare Bob's solid pillars with the ghost target: height difference needs X, phase opposition needs Z."
+          ? '❌ 修正閘不正確。請對比 Bob 實體柱與目標態（透明玻璃槽）的差異：高度不同需 X 閘，相位相反需 Z 閘。'
+          : "❌ Incorrect gate. Compare Bob's solid pillars with the glass tank target: height difference needs X, phase opposition needs Z."
         : locale === 'zh'
         ? `❌ 你選擇了 [${isBlindMode ? '?' : BIT_LABELS[lastUserBits]}] ${CORRECTION_GATES[lastUserBits]}，但正確應為 [${isBlindMode ? '?' : BIT_LABELS[classicalBits]}] ${CORRECTION_GATES[classicalBits]}。`
         : `❌ You selected [${isBlindMode ? '?' : BIT_LABELS[lastUserBits]}] ${CORRECTION_GATES[lastUserBits]}, but the correct gate is [${isBlindMode ? '?' : BIT_LABELS[classicalBits]}] ${CORRECTION_GATES[classicalBits]}.`
@@ -94,6 +94,7 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
       <div className="flex justify-between items-end mb-2 px-2 pb-2 border-b border-slate-800">
         <div className="flex items-baseline gap-2 sm:gap-4 text-xs font-mono">
           <span className="text-slate-400">TELEPORT PROTOCOL:</span>
+          {/* 對齊 EVA-00改 的山吹橙 */}
           <span className="text-orange-500 font-bold uppercase">{phase}</span>
         </div>
 
@@ -110,6 +111,7 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
             {isBlindMode ? (locale === 'zh' ? '盲測模式: ON' : 'BLIND MODE: ON') : locale === 'zh' ? '盲測模式: OFF' : 'BLIND MODE: OFF'}
           </button>
 
+          {/* 對齊 MAGI 通訊的琥珀金 */}
           {classicalBits !== null && !isBlindMode && (
             <span className="text-[10px] font-mono text-amber-400 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-900/50">
               CLASSICAL BITS: {BIT_LABELS[classicalBits]}
@@ -135,7 +137,7 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono text-slate-400 flex justify-between">
                       <span>θ (Polar Angle)</span>
-                      <span className="text-orange-400 font-bold">{(aliceTheta / Math.PI).toFixed(2)}π</span>
+                      <span className="text-orange-500 font-bold">{(aliceTheta / Math.PI).toFixed(2)}π</span>
                     </label>
                     <input
                       type="range"
@@ -149,7 +151,7 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-mono text-slate-400 flex justify-between">
                       <span>φ (Azimuthal Phase)</span>
-                      <span className="text-orange-400 font-bold">{(alicePhi / Math.PI).toFixed(2)}π</span>
+                      <span className="text-orange-500 font-bold">{(alicePhi / Math.PI).toFixed(2)}π</span>
                     </label>
                     <input
                       type="range"
@@ -177,27 +179,28 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
               <div className="flex flex-col items-center justify-center h-full px-2">
                 <p className="text-xs text-slate-400 mb-5 text-center leading-relaxed">
                   {locale === 'zh'
-                    ? '貝爾糾纏對已建立。執行貝爾基測量後，Alice 的原始量子態將坍縮，並透過經典通道傳送 2-bit 測量結果至 Bob 端。'
+                    ? '貝爾糾纏對已建立。執行聯合測量後，Alice 的原始量子態將坍縮，並透過經典光學通道傳送 2-bit 封包至 Bob 端。'
                     : "Bell pair ready. Bell-basis measurement will collapse Alice's state and transmit 2 classical bits to Bob."}
                 </p>
+                {/* 測量按鈕對齊 MAGI 通訊的琥珀金 */}
                 <button
                   type="button"
-                  onClick={() => executeAction(600, measureAlice, () => sound.playTeleport())}
+                  onClick={() => executeAction(800, measureAlice, () => sound.playTeleport())}
                   disabled={isAnimating}
-                  className="w-full py-4 bg-amber-950/40 border border-amber-600/50 rounded-xl hover:bg-amber-900/60 hover:border-amber-500 transition-all active:scale-95 text-[13px] sm:text-sm font-bold text-amber-400 shadow-lg shadow-amber-950/50 disabled:opacity-50"
+                  className="w-full py-4 bg-amber-950/40 border border-amber-500/50 rounded-xl hover:bg-amber-900/60 hover:border-amber-400 transition-all active:scale-95 text-[13px] sm:text-sm font-bold text-amber-400 shadow-lg shadow-amber-950/50 disabled:opacity-50"
                 >
-                  {locale === 'zh' ? '執行貝爾測量 (發送經典位元)' : 'Perform Bell Measurement'}
+                  {locale === 'zh' ? '執行聯合測量 (發送經典封包)' : 'Perform Bell Measurement'}
                 </button>
               </div>
             )}
 
             {phase === 'correct' && classicalBits !== null && (
               <div className="flex flex-col h-full justify-center">
-                <p className="text-[10px] sm:text-xs text-sky-400 mb-3 text-center animate-pulse font-mono">
+                <p className="text-[10px] sm:text-xs text-blue-400 mb-3 text-center animate-pulse font-mono">
                   {isBlindMode
                     ? locale === 'zh'
-                      ? 'Bob 已收到經典位元。請對照實體柱與目標態（幽靈殼），選擇對應的么正修正閘：'
-                      : 'Classical bits received. Compare solid pillars with ghost holograms to select the unitary correction gate:'
+                      ? 'Bob 已收到經典位元。請對照實體柱與目標態（玻璃槽），選擇對應的么正修正閘：'
+                      : 'Classical bits received. Compare solid pillars with glass tank holograms to select the unitary correction gate:'
                     : locale === 'zh'
                     ? `Bob 收到經典位元 [ ${BIT_LABELS[classicalBits]} ]，請施加對應的么正修正閘：`
                     : `Bob received classical bits [ ${BIT_LABELS[classicalBits]} ]. Apply unitary correction gate:`}
@@ -209,7 +212,8 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
                       key={bits}
                       onClick={() => handleApplyCorrection(bits as 0 | 1 | 2 | 3)}
                       disabled={isAnimating}
-                      className="py-2.5 bg-slate-900 border border-slate-700 rounded-xl hover:border-sky-500 hover:bg-sky-950/30 transition-all active:scale-95 text-xs font-mono font-bold text-slate-300 hover:text-sky-400 disabled:opacity-50"
+                      // 修正按鈕對齊 EVA-00初期的鈷藍色
+                      className="py-2.5 bg-slate-900 border border-slate-700 rounded-xl hover:border-blue-500 hover:bg-blue-950/30 transition-all active:scale-95 text-xs font-mono font-bold text-slate-300 hover:text-blue-400 disabled:opacity-50"
                     >
                       {!isBlindMode && <span className="opacity-40 mr-2 font-normal">[{BIT_LABELS[bits]}]</span>}
                       {CORRECTION_GATES[bits]}
@@ -222,21 +226,22 @@ export const ConsoleBoothFour = ({ isExplaining, setIsExplaining }: ConsoleBooth
             {(phase === 'success' || phase === 'failed') && (
               <div
                 className={`flex flex-col items-center justify-center h-full rounded-xl border ${
-                  phase === 'success' ? 'bg-orange-950/30 border-orange-500/50' : 'bg-rose-950/30 border-rose-500/50'
+                  phase === 'success' ? 'bg-emerald-950/30 border-emerald-500/50' : 'bg-rose-950/30 border-rose-500/50'
                 }`}
               >
-                <p className={`text-sm font-bold mb-1 ${phase === 'success' ? 'text-orange-400' : 'text-rose-400'}`}>
+                {/* 成功狀態對齊 Rei Tank 注入靈魂時的翠綠感應光芒 */}
+                <p className={`text-sm font-bold mb-1 ${phase === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {phase === 'success'
                     ? locale === 'zh'
-                      ? '✨ 量子隱形傳態成功！'
-                      : '✨ Teleportation Successful!'
+                      ? '✨ 量子態重建成功！'
+                      : '✨ State Reconstruction Successful!'
                     : locale === 'zh'
                     ? '❌ 么正修正錯誤'
                     : '❌ Incorrect Unitary Correction'}
                 </p>
 
                 <div className="flex flex-col items-center mb-3 px-4 text-center">
-                  <span className={`text-[10px] font-mono mb-1 ${fidelity > 0.99 ? 'text-orange-400' : 'text-rose-400'}`}>
+                  <span className={`text-[10px] font-mono mb-1 ${fidelity > 0.99 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     STATE FIDELITY |⟨ψ_orig|ψ_Bob⟩|² = {(fidelity * 100).toFixed(1)}%
                   </span>
 
