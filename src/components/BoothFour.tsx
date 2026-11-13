@@ -2,8 +2,9 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { RoundedBox } from '@react-three/drei';
+import { useSpring, a } from '@react-spring/three';
+import { useTeleportStore } from '../store/teleportStore';
 
-// 🌟 重新校準三區坐標與比例 (總寬度 8.4，置中，無縫相接)
 const ALICE_POSITIONS: [number, number, number][] = [
   [-1, 0, 1], [-1, 0, -1], [1, 0, 1], [1, 0, -1]
 ];
@@ -13,13 +14,18 @@ const BOB_POSITIONS: [number, number, number][] = [
 ];
 
 export function BoothFour() {
+  // 🌟 訂閱狀態以驅動物理動畫
+  const phase = useTeleportStore((s) => s.phase);
+  
+  // (註: 這裡使用 mockHeight 佔位，你可以替換為 useTeleportStore 取出的真實機率陣列)
   const mockHeight = 1.5; 
+  const mockGhostHeight = 1.0; 
 
   // 🌟 Zero-GC 優化：預先建立並共享幾何體與材質
   const { 
     baseMat, channelMat, packetMat,
     aliceRingMat, alicePillarMat, 
-    bobRingMat, bobPillarMat,
+    bobRingMat, bobPillarMat, bobGhostMat,
     ringGeo, pillarGeo, planeGeo, sphereGeo 
   } = useMemo(() => {
     // 【核心優化】將圓柱體原點移至底部！未來只需要改 scale-y 就能長高
@@ -27,13 +33,11 @@ export function BoothFour() {
     cyl.translate(0, 0.5, 0); 
 
     return {
-      // 幾何體
       pillarGeo: cyl,
       ringGeo: new THREE.CircleGeometry(0.4, 32),
       planeGeo: new THREE.PlaneGeometry(2.8, 0.2),
       sphereGeo: new THREE.SphereGeometry(0.25, 16, 16),
       
-      // 材質 (共用材質大幅降低 Draw Call 與 GC 壓力)
       baseMat: new THREE.MeshStandardMaterial({ color: "#0f172a", roughness: 0.8 }),
       channelMat: new THREE.MeshBasicMaterial({ color: "#334155", transparent: true, opacity: 0.5 }),
       packetMat: new THREE.MeshBasicMaterial({ color: "#fbbf24", toneMapped: false }),
@@ -43,8 +47,19 @@ export function BoothFour() {
       
       bobRingMat: new THREE.MeshBasicMaterial({ color: "#a855f7", transparent: true, opacity: 0.4, depthWrite: false }),
       bobPillarMat: new THREE.MeshStandardMaterial({ color: "#a855f7", emissive: "#9333ea", emissiveIntensity: 0.8, transparent: true, opacity: 0.85 }),
+      
+      // 🌟 新增：幽靈殼材質 (Wireframe 透視感，代表目標態)
+      bobGhostMat: new THREE.MeshBasicMaterial({ color: "#ffffff", wireframe: true, transparent: true, opacity: 0.15, depthWrite: false }),
     };
   }, []);
+
+  // 🌟 經典通訊封包動畫 (Classical Channel Packet)
+  const isSent = phase === 'correct' || phase === 'success' || phase === 'failed';
+  const { packetX, packetScale } = useSpring({
+    packetX: isSent ? 1.2 : -1.2,
+    packetScale: phase === 'prepare' ? 0 : 1,
+    config: { mass: 1, tension: 80, friction: 20 }
+  });
 
   return (
     <group position={[-0.4, -1, 0]}>
@@ -57,17 +72,16 @@ export function BoothFour() {
         
         {ALICE_POSITIONS.map((pos, i) => (
           <group key={`alice-${i}`} position={pos}>
-            <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={ringGeo} material={aliceRingMat} />
-            {/* 🌟 透過 scale-y 控制高度，不需再手算 position-y */}
-            <mesh scale-y={mockHeight} geometry={pillarGeo} material={alicePillarMat} />
+            <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={ringGeo} material={aliceRingMat} dispose={null} />
+            <a.mesh scale-y={mockHeight} geometry={pillarGeo} material={alicePillarMat} dispose={null} />
           </group>
         ))}
       </group>
 
       {/* 2. 經典通訊通道 (中央) */}
       <group position={[0.2, 0, 0]}>
-        <mesh position={[0, -0.1, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={planeGeo} material={channelMat} />
-        <mesh position={[0, 0.1, 0]} geometry={sphereGeo} material={packetMat} />
+        <mesh position={[0, -0.1, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={planeGeo} material={channelMat} dispose={null} />
+        <a.mesh position-x={packetX} position-y={0.1} scale={packetScale} geometry={sphereGeo} material={packetMat} dispose={null} />
       </group>
 
       {/* 3. BOB 面板 (右側) */}
@@ -78,9 +92,13 @@ export function BoothFour() {
         
         {BOB_POSITIONS.map((pos, i) => (
           <group key={`bob-${i}`} position={pos}>
-            <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={ringGeo} material={bobRingMat} />
-            {/* 🌟 透過 scale-y 控制高度 */}
-            <mesh scale-y={mockHeight} geometry={pillarGeo} material={bobPillarMat} />
+            <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={ringGeo} material={bobRingMat} dispose={null} />
+            
+            {/* 實體柱 (Bob 當前態) */}
+            <a.mesh scale-y={mockHeight} geometry={pillarGeo} material={bobPillarMat} dispose={null} />
+            
+            {/* 🌟 幽靈殼 (Alice 欲傳送的目標態)，X/Z 軸微幅放大避免 Z-fighting */}
+            <a.mesh scale={[1.05, mockGhostHeight, 1.05]} geometry={pillarGeo} material={bobGhostMat} dispose={null} />
           </group>
         ))}
       </group>
