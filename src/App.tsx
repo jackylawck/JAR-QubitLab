@@ -11,19 +11,19 @@ import { useSpring, a } from '@react-spring/three';
 import { BoothOne } from './components/BoothOne';
 import { BoothTwo } from './components/BoothTwo';
 import { BoothThree } from './components/BoothThree';
-import { BoothFour } from './components/BoothFour'; // 🌟 匯入展台 4
+import { BoothFour } from './components/BoothFour';
 import { LanguageToggle } from './components/LanguageToggle';
 import { GovernanceNotice } from './components/GovernanceNotice';
 
 import { ConsoleBoothOne } from './components/console/ConsoleBoothOne';
 import { ConsoleBoothTwo } from './components/console/ConsoleBoothTwo';
 import { ConsoleBoothThree } from './components/console/ConsoleBoothThree';
-import { ConsoleBoothFour } from './components/console/ConsoleBoothFour'; // 🌟 匯入展台 4 面板
+import { ConsoleBoothFour } from './components/console/ConsoleBoothFour';
 
 import { useLocaleStore } from './store/localeStore';
 import { useQuantumStore } from './store/quantumStore';
 import { useTensorStore } from './store/tensorStore';
-import { useTeleportStore } from './store/teleportStore'; // 🌟 匯入展台 4 Store
+import { useTeleportStore } from './store/teleportStore';
 import { sound } from './audio/soundEngine';
 
 export type BoothType = 'one' | 'two' | 'three' | 'four';
@@ -72,9 +72,7 @@ const BoothTab = ({
   );
 };
 
-// 🌟 優化 3：平滑過渡的動態攝影機
 const AnimatedCamera = ({ activeBooth }: { activeBooth: BoothType }) => {
-  // 針對不同展台配置最佳觀測視角
   const configs = {
     one: { pos: [0, 4.5, 9.5], fov: 46 },
     two: { pos: [0, 4.5, 9.5], fov: 46 },
@@ -93,7 +91,7 @@ const AnimatedCamera = ({ activeBooth }: { activeBooth: BoothType }) => {
     <a.perspectiveCamera
       makeDefault
       position={pos as any}
-      fov={fov}
+      fov={fov as any}
       near={0.1}
       far={1000}
     />
@@ -156,7 +154,6 @@ export default function App() {
             </span>
           </div>
           
-          {/* 🌟 擴充至 4 個 Tab */}
           <div className="flex items-center gap-1.5 pointer-events-auto shrink-0 overflow-x-auto pb-1 max-w-[65%] sm:max-w-none hide-scrollbar">
             <LanguageToggle />
             <BoothTab label={locale === 'zh' ? '展台 1' : 'Booth 1'} isActive={activeBooth === 'one'} onClick={() => handleSwitchBooth('one')} colorTheme="blue" />
@@ -166,7 +163,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* 🌟 優化 2：移除頻繁切換 frameloop，保持 WebGL 管線穩定 */}
         <Canvas dpr={[1, 2]} frameloop="always" gl={{ antialias: true }}>
           <AnimatedCamera activeBooth={activeBooth} />
           
