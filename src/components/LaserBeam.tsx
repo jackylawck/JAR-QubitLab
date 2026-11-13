@@ -1,3 +1,4 @@
+// src/components/LaserBeam.tsx
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -9,13 +10,22 @@ interface LaserBeamProps {
   intensity?: number;
   coreRadius?: number;
   glowRadius?: number;
-  animated?: boolean; // 新增動畫開關
+  animated?: boolean; // 動畫開關
 }
 
-// 🌟 優化 1：全域單位幾何體緩存 (Zero-GC Geometry)
-// 捨棄每次依據長度重新 new CylinderGeometry，改宣告一個高度為 1 的「單位圓柱體」
-// 讓場景中無限條雷射光束都能共用這同一個 GPU 記憶體，效能大躍進！
+// 🌟 優化 1：全域靜態幾何體與核心材質 (Zero-GC)
+// 捨棄每次依據長度重新 new CylinderGeometry，改用高度為 1 的「單位圓柱體」
 const BEAM_GEOMETRY = new THREE.CylinderGeometry(1, 1, 1, 16);
+
+// 將高純度白熾光芯材質抽離，讓場景中無限條雷射光束都能共用同一個 GPU 記憶體
+const CORE_MATERIAL = new THREE.MeshBasicMaterial({
+  color: '#ffffff',
+  transparent: true,
+  opacity: 0.95,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  toneMapped: false, // 不受 ACES 壓制，保持純白過曝感
+});
 
 export function LaserBeam({
   start,
@@ -29,8 +39,10 @@ export function LaserBeam({
   const glowMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
 
   const { mid, len, quaternion } = useMemo(() => {
-    const p1 = new THREE.Vector3(...start);
-    const p2 = new THREE.Vector3(...end);
+    // 🌟 優化 3：消除 Spread Operator (...) 開銷，直接讀取索引效能最佳
+    const p1 = new THREE.Vector3(start[0], start[1], start[2]);
+    const p2 = new THREE.Vector3(end[0], end[1], end[2]);
+    
     const dir = new THREE.Vector3().subVectors(p2, p1);
     const length = dir.length();
     const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
@@ -41,7 +53,7 @@ export function LaserBeam({
     return { mid, len: length, quaternion: q };
   }, [start, end]);
 
-  // 🌟 優化 4：量子脈動動畫 (Quantum High-Frequency Flicker)
+  // 🌟 量子脈動動畫 (Quantum High-Frequency Flicker)
   useFrame(({ clock }) => {
     if (!animated || !glowMaterialRef.current) return;
     const t = clock.elapsedTime;
@@ -54,20 +66,20 @@ export function LaserBeam({
     <group position={mid} quaternion={quaternion}>
       {/* 🌟 優化 2：使用 Scale 分別縮放半徑與長度，完美適配不同尺寸 */}
       
-      {/* 1. 高純度白熾光芯 */}
-      <mesh geometry={BEAM_GEOMETRY} scale={[coreRadius, len, coreRadius]}>
-        <meshBasicMaterial
-          color="#ffffff"
-          transparent
-          opacity={0.95}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          toneMapped={false} // 🌟 優化 3：不受 ACES 壓制，保持純白過曝感
-        />
-      </mesh>
+      {/* 1. 高純度白熾光芯 (套用全域材質，並加上 dispose={null} 防誤刪) */}
+      <mesh 
+        geometry={BEAM_GEOMETRY} 
+        material={CORE_MATERIAL} 
+        scale={[coreRadius, len, coreRadius]} 
+        dispose={null} 
+      />
 
-      {/* 2. 外圍光子輝光光暈 */}
-      <mesh geometry={BEAM_GEOMETRY} scale={[glowRadius, len, glowRadius]}>
+      {/* 2. 外圍光子輝光光暈 (顏色與透明度需獨立變動，保留獨立 Material) */}
+      <mesh 
+        geometry={BEAM_GEOMETRY} 
+        scale={[glowRadius, len, glowRadius]} 
+        dispose={null}
+      >
         <meshBasicMaterial
           ref={glowMaterialRef}
           color={color}
@@ -75,7 +87,7 @@ export function LaserBeam({
           opacity={intensity * 0.65}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
-          toneMapped={false} // 🌟 保持鮮豔的霓虹光暈，不會變灰變暗
+          toneMapped={false} // 保持鮮豔的霓虹光暈，不會變灰變暗
         />
       </mesh>
     </group>
