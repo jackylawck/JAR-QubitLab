@@ -1,3 +1,7 @@
+# .github/workflows/deploy.yml
+# Project: J.A.R. QubitLab (Joint Applied Research)
+# Creator: 羅子淇 Jacky Law (https://jackylawck.github.io/jackylawck)
+
 name: Deploy QubitLab to GitHub Pages
 
 on:
@@ -5,22 +9,21 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# 設定 GITHUB_TOKEN 權限以部署到 GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+# 預設零權限（最小權限原則），僅於 deploy 階段按需授予 Pages 部署憑證
+permissions: {}
 
-# 避免同一時間有多個部署競爭
+# 依序排隊部署，避免中斷正在寫入的生產環境發布
 concurrency:
   group: 'pages'
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  # 🌟 優化 1：將 Build 與 Deploy 拆分為獨立的 Job (職責分離)
   build:
+    name: Typecheck, Test & Build
     runs-on: ubuntu-latest
-    timeout-minutes: 10 # 🌟 優化 2：加入超時防護，避免進程卡死（如測試死迴圈）耗盡 Actions 額度
+    timeout-minutes: 10
+    permissions:
+      contents: read
 
     steps:
       - name: 📥 Checkout Repository
@@ -35,11 +38,15 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm ci
 
+      - name: 🔍 TypeScript Strict Typecheck
+        run: npx tsc --noEmit
+
       - name: 🧪 Run Quantum Engine Unit Tests
         run: npx vitest run
 
       - name: 🏗️ Build Project (Vite)
         env:
+          NODE_ENV: production
           GITHUB_ACTIONS: 'true'
         run: npm run build
 
@@ -51,21 +58,24 @@ jobs:
       - name: 🛠️ Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: 📤 Upload Artifact
+      - name: 📤 Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
 
-  # 🌟 優化 1：獨立的 Deploy Job
   deploy:
-    needs: build # 🌟 優化 3：明確依賴，確保 Build 與 Tests 100% 通過後才啟動部署環境
+    name: Deploy to GitHub Pages
+    needs: build
     runs-on: ubuntu-latest
-    
-    # 🌟 優化 4：將 environment 移至 deploy job。這樣若設定了「人工審核部署」，就不會卡住前面的單元測試與建置
+    timeout-minutes: 5
+    permissions:
+      pages: write
+      id-token: write
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-      
+
     steps:
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
