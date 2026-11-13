@@ -1,5 +1,5 @@
 // src/audio/soundEngine.ts
-import { STORAGE_KEYS } from '../constants'; // 🌟 1. 引入常數
+import { STORAGE_KEYS } from '../constants';
 
 class QuantumAudioEngine {
   private ctx: AudioContext | null = null;
@@ -10,7 +10,6 @@ class QuantumAudioEngine {
   constructor() {
     if (typeof window !== 'undefined') {
       try {
-        // 🌟 2. 使用常數避免魔法字串，並加入隱私模式存取防護
         const saved = localStorage.getItem(STORAGE_KEYS.SOUND_MUTED);
         if (saved !== null) {
           this.isMuted = saved === 'true';
@@ -34,13 +33,11 @@ class QuantumAudioEngine {
     }
   }
 
-  // 全域解除掛起 (適用於 iOS Safari 嚴格策略)
   public unlock() {
     if (this.unlocked || typeof window === 'undefined') return;
     this.init();
     if (!this.ctx) return;
 
-    // 播放一個極短的無聲震盪器，強制喚醒 AudioContext
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     gain.gain.value = 0;
@@ -48,6 +45,12 @@ class QuantumAudioEngine {
     gain.connect(this.ctx.destination);
     osc.start(0);
     osc.stop(0.01);
+    
+    // 🌟 優化 2：主動斷開節點，防止 Memory Leak
+    osc.onended = () => {
+      osc.disconnect();
+      gain.disconnect();
+    };
 
     this.unlocked = true;
   }
@@ -56,7 +59,6 @@ class QuantumAudioEngine {
     this.isMuted = muted;
     if (typeof window !== 'undefined') {
       try {
-        // 🌟 3. 使用常數，並加入隱私模式寫入防護
         localStorage.setItem(STORAGE_KEYS.SOUND_MUTED, String(muted));
       } catch (e) {} 
     }
@@ -89,6 +91,12 @@ class QuantumAudioEngine {
     filter.connect(gain);
     gain.connect(this.masterGain);
 
+    osc.onended = () => {
+      osc.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    };
+
     osc.start(t);
     osc.stop(t + 0.1);
   }
@@ -109,6 +117,11 @@ class QuantumAudioEngine {
     
     base.connect(baseGain);
     baseGain.connect(this.masterGain);
+    
+    base.onended = () => {
+      base.disconnect();
+      baseGain.disconnect();
+    };
     base.start(t);
     base.stop(t + 0.06);
 
@@ -121,6 +134,11 @@ class QuantumAudioEngine {
     
     overtone.connect(overtoneGain);
     overtoneGain.connect(this.masterGain);
+
+    overtone.onended = () => {
+      overtone.disconnect();
+      overtoneGain.disconnect();
+    };
     overtone.start(t);
     overtone.stop(t + 0.15);
   }
@@ -155,6 +173,12 @@ class QuantumAudioEngine {
     filter.connect(gain);
     gain.connect(this.masterGain);
 
+    noise.onended = () => {
+      noise.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    };
+
     noise.start(t);
     noise.stop(t + 0.4); 
   }
@@ -184,11 +208,17 @@ class QuantumAudioEngine {
     filter.connect(gain);
     gain.connect(this.masterGain);
 
+    osc.onended = () => {
+      osc.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    };
+
     osc.start(t);
     osc.stop(t + 0.6);
   }
 
-  // 5. 展台 3：抽樣滴答聲 (音高隨步數遞增)
+  // 5. 展台 3：抽樣滴答聲
   playTick(stepIndex = 0) {
     this.init();
     if (!this.ctx || !this.masterGain || this.isMuted) return;
@@ -204,17 +234,21 @@ class QuantumAudioEngine {
     osc.connect(gain);
     gain.connect(this.masterGain);
     
+    osc.onended = () => {
+      osc.disconnect();
+      gain.disconnect();
+    };
+
     osc.start(t);
     osc.stop(t + 0.04);
   }
 
-  // 6. 展台 3：單次測量開獎聲 (低頻衝擊 + 金屬鈴音)
+  // 6. 展台 3：單次測量開獎聲
   playCollapse() {
     this.init();
     if (!this.ctx || !this.masterGain || this.isMuted) return;
     const t = this.ctx.currentTime;
     
-    // 低頻衝擊
     const subOsc = this.ctx.createOscillator();
     const subGain = this.ctx.createGain();
     subOsc.type = 'sine';
@@ -222,39 +256,48 @@ class QuantumAudioEngine {
     subOsc.frequency.exponentialRampToValueAtTime(32, t + 0.22);
     subGain.gain.setValueAtTime(0.35, t);
     subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    
     subOsc.connect(subGain);
     subGain.connect(this.masterGain);
+    
+    subOsc.onended = () => {
+      subOsc.disconnect();
+      subGain.disconnect();
+    };
     subOsc.start(t);
     subOsc.stop(t + 0.22);
     
-    // 金屬鈴音
     const bellOsc = this.ctx.createOscillator();
     const bellGain = this.ctx.createGain();
     bellOsc.type = 'triangle';
     bellOsc.frequency.setValueAtTime(1560, t);
     bellGain.gain.setValueAtTime(0.2, t);
     bellGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    
     bellOsc.connect(bellGain);
     bellGain.connect(this.masterGain);
+    
+    bellOsc.onended = () => {
+      bellOsc.disconnect();
+      bellGain.disconnect();
+    };
     bellOsc.start(t);
     bellOsc.stop(t + 0.35);
   }
 
-  // 7. 展台 3：糾纏驗證成功通關音 (C-E-G 和弦)
+  // 7. 展台 3：糾纏驗證成功通關音
   playVictoryChord() {
     this.init();
     if (!this.ctx || !this.masterGain || this.isMuted) return;
     const t = this.ctx.currentTime;
-    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+    const notes = [523.25, 659.25, 783.99]; 
     
     notes.forEach((freq, idx) => {
-      // 🌟 4. 型別安全修正：雖然 init() 確保 ctx 不為 null，但在 forEach 的 Closure 內，
-      // TS 無法保證 this.ctx 在執行當下絕對不為 null。加入 Optional Chaining (?.) 與 if 檢查。
       if (!this.ctx || !this.masterGain) return;
       
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      const startTime = t + idx * 0.08; // 琶音效果
+      const startTime = t + idx * 0.08; 
       
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, startTime);
@@ -264,12 +307,18 @@ class QuantumAudioEngine {
       
       osc.connect(gain);
       gain.connect(this.masterGain);
+      
+      osc.onended = () => {
+        osc.disconnect();
+        gain.disconnect();
+      };
+
       osc.start(startTime);
       osc.stop(startTime + 0.9);
     });
   }
 
-  // 8. 展台 3：雜質警告音 (低頻鋸齒波)
+  // 8. 展台 3：雜質警告音
   playGlitch() {
     this.init();
     if (!this.ctx || !this.masterGain || this.isMuted) return;
@@ -294,8 +343,120 @@ class QuantumAudioEngine {
     filter.connect(gain);
     gain.connect(this.masterGain);
     
+    osc.onended = () => {
+      osc.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    };
+
     osc.start(t);
     osc.stop(t + 0.14);
+  }
+
+  // 🌟 9. 展台 4：光球飛越 (0.6秒)
+  public playTeleport() {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const t = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400, t);
+    osc.frequency.exponentialRampToValueAtTime(1200, t + 0.6);
+
+    filter.type = 'bandpass';
+    filter.Q.value = 5;
+    filter.frequency.setValueAtTime(400, t);
+    filter.frequency.exponentialRampToValueAtTime(1500, t + 0.6);
+
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.3, t + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.onended = () => {
+      osc.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    };
+
+    osc.start(t);
+    osc.stop(t + 0.6);
+  }
+
+  // 🌟 10. 展台 4：成功修正 (0.8秒，C-E-G-C 琶音)
+  public playSuccess() {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const t = this.ctx.currentTime;
+    const freqs = [523.25, 659.25, 783.99, 1046.5];
+
+    freqs.forEach((freq, i) => {
+      if (!this.ctx || !this.masterGain) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+
+      const startTime = t + i * 0.05;
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.15, startTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.6);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.onended = () => {
+        osc.disconnect();
+        gain.disconnect();
+      };
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.6);
+    });
+  }
+
+  // 🌟 11. 展台 4：失敗修正 (0.3秒，120→60Hz 下滑)
+  public playFail() {
+    this.init();
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const t = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(120, t);
+    osc.frequency.exponentialRampToValueAtTime(60, t + 0.3);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(300, t);
+    filter.frequency.linearRampToValueAtTime(100, t + 0.3);
+
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.3, t + 0.05);
+    gain.gain.linearRampToValueAtTime(0.01, t + 0.3);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.onended = () => {
+      osc.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    };
+
+    osc.start(t);
+    osc.stop(t + 0.3);
   }
 }
 
