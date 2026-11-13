@@ -58,7 +58,6 @@ export function BoothFour() {
     let b0 = 0.9;
     let b1 = 0.9;
     if (phase === 'correct' && classicalBits !== null) {
-      // 未修正前，若 classicalBits 含 X 誤差（1 或 3），|0⟩ 與 |1⟩ 振幅互換
       const needsX = classicalBits === 1 || classicalBits === 3;
       b0 = needsX ? target1 : target0;
       b1 = needsX ? target0 : target1;
@@ -96,11 +95,11 @@ export function BoothFour() {
 
       baseMat: new THREE.MeshStandardMaterial({ color: '#090a0f', roughness: 0.8 }),
 
-      // Alice 端：零號機改 (山吹橙 + 深灰黑肩甲)
+      // Alice 端：零號機改 EVA-00' (山吹橙 + 純白底座 + 深灰黑肩甲三色配)
       aliceRingMat: new THREE.MeshBasicMaterial({
-        color: '#f97316',
+        color: '#f8fafc',
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.55,
         depthWrite: false,
       }),
       alicePillarMat: new THREE.MeshStandardMaterial({
@@ -143,7 +142,7 @@ export function BoothFour() {
         roughness: 0.15,
       }),
 
-      // Bob 端：正宗零號機初期型 (冷冽蔚藍 #0284c7 / #0ea5e9 + 純白裝甲) + 高可見度透明培養槽
+      // Bob 端：零號機初期型 (高飽和深鈷藍 #1d4ed8 + 純白裝甲) + 高可見度透明培養槽
       bobRingMat: new THREE.MeshBasicMaterial({
         color: '#f8fafc',
         transparent: true,
@@ -151,9 +150,9 @@ export function BoothFour() {
         depthWrite: false,
       }),
       bobPillarMat: new THREE.MeshStandardMaterial({
-        color: '#0284c7',
-        emissive: '#0ea5e9',
-        emissiveIntensity: 0.75,
+        color: '#1d4ed8',
+        emissive: '#1e40af',
+        emissiveIntensity: 0.9,
         toneMapped: false,
         transparent: true,
         opacity: 0.92,
@@ -219,9 +218,9 @@ export function BoothFour() {
     <group position={[-0.4, -1, 0]}>
       <ambientLight intensity={0.55} />
       <directionalLight position={[-4, 8, 4]} intensity={1.1} color="#fb923c" />
-      <directionalLight position={[4, 8, 4]} intensity={1.15} color="#38bdf8" />
+      <directionalLight position={[4, 8, 4]} intensity={1.15} color="#3b82f6" />
 
-      {/* 1. ALICE 面板 (發送端 / EVA-00' 山吹橙意象) */}
+      {/* 1. ALICE 面板 (發送端 / EVA-00' 山吹橙＋純白＋深灰三色意象) */}
       <group position={[-3.0, 0, 0]}>
         <RoundedBox args={[3.2, 0.8, 3]} radius={0.1} smoothness={4} position={[0, -0.4, 0]}>
           <primitive object={resources.baseMat} attach="material" />
@@ -239,7 +238,6 @@ export function BoothFour() {
                 dispose={null}
               />
               <a.mesh scale-y={hSpring} geometry={resources.pillarGeo} material={resources.alicePillarMat} dispose={null} />
-              {/* 獨立深灰黑肩甲環：跟隨柱頂高度移動但不被壓扁變形 */}
               <a.mesh
                 position-y={hSpring}
                 rotation={[Math.PI / 2, 0, 0]}
@@ -285,7 +283,7 @@ export function BoothFour() {
         />
       </group>
 
-      {/* 3. BOB 面板 (接收端 / EVA-00 初期蔚藍 + 透明玻璃培養槽) */}
+      {/* 3. BOB 面板 (接收端 / EVA-00 初期深鈷藍 + 透明玻璃培養槽) */}
       <group position={[3.0, 0, 0]}>
         <RoundedBox args={[2.4, 0.8, 3]} radius={0.1} smoothness={4} position={[0, -0.4, 0]}>
           <primitive object={resources.baseMat} attach="material" />
@@ -304,7 +302,7 @@ export function BoothFour() {
                 dispose={null}
               />
 
-              {/* 零號機初期型蔚藍實體柱 */}
+              {/* 零號機初期型高飽和深鈷藍實體柱 */}
               <a.mesh scale-y={bSpring} geometry={resources.pillarGeo} material={resources.bobPillarMat} dispose={null} />
 
               {/* 透明玻璃培養槽本體 */}
